@@ -1,6 +1,7 @@
 services:
   stremio-rss-catalog:
     image: ${REGISTRY_IMAGE:-ghcr.io/nexis-cmyk/stremio-rss-catalog}:${IMAGE_TAG:-latest}
+    pull_policy: always
     container_name: stremio-rss-catalog
     restart: unless-stopped
     ports:
@@ -20,3 +21,13 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+
+  watchtower:
+    image: containrrr/watchtower:1.7.1
+    container_name: stremio-rss-watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --label-enable --interval 300 --cleanup

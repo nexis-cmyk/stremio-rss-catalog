@@ -55,7 +55,7 @@ Auf dem Server `.env` um die Image-Werte ergänzen:
 
 ```dotenv
 REGISTRY_IMAGE=ghcr.io/nexis-cmyk/stremio-rss-catalog
-IMAGE_TAG=1.0.0
+IMAGE_TAG=latest
 ```
 
 Danach starten oder aktualisieren:
@@ -67,6 +67,16 @@ docker compose -f docker-compose.registry.yml pull
 docker compose -f docker-compose.registry.yml up -d
 docker compose -f docker-compose.registry.yml ps
 ```
+
+Die Registry-Variante enthÃ¤lt Watchtower. Das Ã¶ffentliche `latest`-Image wird dadurch
+alle fÃ¼nf Minuten auf einen neuen Digest geprÃ¼ft und bei einer Ã„nderung automatisch
+gezogen und neu gestartet. Nach der einmaligen Einrichtung sind keine manuellen
+Image-Tags oder wiederholten Pull-Befehle nÃ¶tig. `pull_policy: always` stellt zusÃ¤tzlich
+sicher, dass ein manuelles `docker compose up` immer den aktuellen `latest`-Stand prÃ¼ft.
+
+Watchtower benÃ¶tigt Zugriff auf `/var/run/docker.sock`. Wer diesen Socket nicht
+freigeben mÃ¶chte, kann den Watchtower-Service entfernen und Updates stattdessen Ã¼ber
+einen eigenen Docker-/Systemd-Timer ausfÃ¼hren.
 
 ## Betrieb und Updates
 
@@ -82,6 +92,9 @@ Container stoppen oder starten:
 docker compose -f docker-compose.build.yml down
 docker compose -f docker-compose.build.yml up -d
 ```
+
+FÃ¼r die Registry-Variante gelten dieselben Befehle mit
+`-f docker-compose.registry.yml`; Watchtower Ã¼bernimmt danach die Updates automatisch.
 
 Vor einem Update den persistenten Datenordner sichern:
 
