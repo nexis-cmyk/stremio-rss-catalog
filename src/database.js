@@ -2,7 +2,7 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 
-const SCHEMA_VERSION = 6;
+const SCHEMA_VERSION = 7;
 const SCHEMA_BACKUP_RETENTION = 10;
 
 const DEFAULT_CATALOGS = [
@@ -123,6 +123,7 @@ class DatabaseManager {
         source_url TEXT,
         quality TEXT,
         hash TEXT,
+        published_at INTEGER,
         added_at INTEGER NOT NULL
       )
     `);
@@ -153,6 +154,7 @@ class DatabaseManager {
         catalog_type TEXT,
         type TEXT,
         year TEXT,
+        published_at INTEGER,
         fail_reason TEXT,
         attempted_at INTEGER NOT NULL,
         retry_count INTEGER DEFAULT 0
@@ -361,6 +363,7 @@ class DatabaseManager {
     this._migrateMediaEnrichment();
     this._migrateAvailability();
     this._migrateMatchAudit();
+    this._migrateReleasePublishedAt();
 
     this.initDefaultConfig();
     this.seedManagedCatalogs();
@@ -445,6 +448,25 @@ class DatabaseManager {
     for (const [column, definition] of migrations) {
       if (!cols.includes(column)) this.db.prepare(`ALTER TABLE media ADD COLUMN ${column} ${definition}`).run();
     }
+  }
+
+  _migrateReleasePublishedAt() {
+    const releaseCols = this.db.prepare("PRAGMA table_info(releases)").all().map(c => c.name);
+    if (!releaseCols.includes('published_at')) {
+      this.db.prepare('ALTER TABLE releases ADD COLUMN published_at INTEGER').run();
+      console.log('[DB] Migration releases : date de publication ajoutée');
+    }
+    const failedCols = this.db.prepare("PRAGMA table_info(failed_releases)").all().map(c => c.name);
+    if (failedCols.length && !failedCols.includes('published_at')) {
+      this.db.prepare('ALTER TABLE failed_releases ADD COLUMN published_at INTEGER').run();
+      console.log('[DB] Migration releases échouées : date de publication ajoutée');
+    }
+    this.db.exec(`
+      UPDATE releases SET published_at = COALESCE(published_at, added_at);
+      UPDATE failed_releases SET published_at = COALESCE(published_at, attempted_at);
+      CREATE INDEX IF NOT EXISTS idx_releases_media_source_published
+        ON releases(media_imdb_id, source_url, published_at DESC);
+    `);
   }
 
   _migrateCatalogMediaTypes() {
@@ -1020,12 +1042,40 @@ class DatabaseManager {
             )
         ), 2147483647) ASC,`
       : '';
+    const sortMode = [
+      'rss_date_desc', 'rss_date_asc', 'added_desc', 'added_asc',
+      'year_desc', 'year_asc', 'name_asc', 'name_desc'
+    ].includes(catalog.filters?.sort_mode)
+      ? catalog.filters.sort_mode
+      : 'rss_date_desc';
+    const selectedSources = Array.isArray(catalog.source_urls)
+      ? catalog.source_urls.map(String).filter(Boolean)
+      : [];
+    const sourceFilter = selectedSources.length
+      ? ` AND r.source_url IN (${selectedSources.map(() => '?').join(',')})`
+      : '';
+    const rssDateOrder = `COALESCE((
+      SELECT MAX(COALESCE(r.published_at, r.added_at))
+      FROM releases r
+      WHERE r.media_imdb_id = m.imdb_id${sourceFilter}
+    ), 0)`;
+    const sortOrder = {
+      rss_date_desc: `${rssDateOrder} DESC`,
+      rss_date_asc: `${rssDateOrder} ASC`,
+      added_desc: 'm.first_seen_at DESC',
+      added_asc: 'm.first_seen_at ASC',
+      year_desc: 'CAST(COALESCE(m.year, 0) AS INTEGER) DESC',
+      year_asc: 'CAST(COALESCE(m.year, 9999) AS INTEGER) ASC',
+      name_asc: 'm.name COLLATE NOCASE ASC',
+      name_desc: 'm.name COLLATE NOCASE DESC'
+    }[sortMode];
+    if (selectedSources.length && sortMode.startsWith('rss_date_')) params.push(...selectedSources);
     if (guideId) params.push(guideId);
     params.push(Number(limit), Number(skip));
     const rows = this.db.prepare(`
       SELECT m.* FROM media m
       WHERE ${conditions.join(' AND ')}
-      ORDER BY ${guideOrder} m.first_seen_at DESC
+      ORDER BY ${sortOrder}, ${guideOrder} m.first_seen_at DESC, m.imdb_id ASC
       LIMIT ? OFFSET ?
     `).all(...params);
     return rows.map(row => ({
@@ -1332,10 +1382,11 @@ class DatabaseManager {
       const now = release.last_seen_at || Date.now();
       this.db.prepare(`
         INSERT INTO releases
-          (media_imdb_id, release_name, indexer_rlz_id, source_url, quality, hash, added_at,
+          (media_imdb_id, release_name, indexer_rlz_id, source_url, quality, hash, published_at, added_at,
            last_seen_at, last_scan_token, missing_scan_count, availability_hidden, availability_hidden_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, NULL)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, NULL)
         ON CONFLICT(indexer_rlz_id) DO UPDATE SET
+          published_at = COALESCE(excluded.published_at, releases.published_at),
           last_seen_at = excluded.last_seen_at,
           last_scan_token = COALESCE(excluded.last_scan_token, releases.last_scan_token),
           missing_scan_count = 0,
@@ -1348,6 +1399,7 @@ class DatabaseManager {
         release.source_url || null,
         release.quality || null,
         release.hash || null,
+        Number.isFinite(Number(release.published_at)) ? Number(release.published_at) : null,
         release.added_at || now,
         now,
         release.scan_token || null
@@ -1375,17 +1427,17 @@ class DatabaseManager {
     return !!this.db.prepare('SELECT id FROM releases WHERE hash = ?').get(hash);
   }
 
-  markReleaseSeenByIndexer(indexerRlzId, scanToken = null, seenAt = Date.now()) {
+  markReleaseSeenByIndexer(indexerRlzId, scanToken = null, seenAt = Date.now(), publishedAt = null) {
     const row = this.db.prepare(
       'SELECT media_imdb_id FROM releases WHERE indexer_rlz_id = ?'
     ).get(indexerRlzId);
     if (!row) return false;
     this.db.prepare(`
       UPDATE releases
-      SET last_seen_at = ?, last_scan_token = COALESCE(?, last_scan_token),
+      SET published_at = COALESCE(?, published_at), last_seen_at = ?, last_scan_token = COALESCE(?, last_scan_token),
           missing_scan_count = 0, availability_hidden = 0, availability_hidden_at = NULL
       WHERE indexer_rlz_id = ?
-    `).run(seenAt, scanToken, indexerRlzId);
+    `).run(Number.isFinite(Number(publishedAt)) ? Number(publishedAt) : null, seenAt, scanToken, indexerRlzId);
     this.db.prepare(`
       UPDATE media SET last_seen_at = MAX(COALESCE(last_seen_at, 0), ?),
         availability_hidden = 0, availability_hidden_at = NULL
@@ -1394,7 +1446,7 @@ class DatabaseManager {
     return true;
   }
 
-  markReleaseSeenByHash(hash, scanToken = null, seenAt = Date.now()) {
+  markReleaseSeenByHash(hash, scanToken = null, seenAt = Date.now(), publishedAt = null) {
     if (!hash) return false;
     const rows = this.db.prepare(
       'SELECT DISTINCT media_imdb_id FROM releases WHERE hash = ?'
@@ -1402,10 +1454,10 @@ class DatabaseManager {
     if (!rows.length) return false;
     this.db.prepare(`
       UPDATE releases
-      SET last_seen_at = ?, last_scan_token = COALESCE(?, last_scan_token),
+      SET published_at = COALESCE(?, published_at), last_seen_at = ?, last_scan_token = COALESCE(?, last_scan_token),
           missing_scan_count = 0, availability_hidden = 0, availability_hidden_at = NULL
       WHERE hash = ?
-    `).run(seenAt, scanToken, hash);
+    `).run(Number.isFinite(Number(publishedAt)) ? Number(publishedAt) : null, seenAt, scanToken, hash);
     const updateMedia = this.db.prepare(`
       UPDATE media SET last_seen_at = MAX(COALESCE(last_seen_at, 0), ?),
         availability_hidden = 0, availability_hidden_at = NULL
@@ -1497,8 +1549,8 @@ class DatabaseManager {
     try {
       this.db.prepare(`
         INSERT INTO failed_releases
-          (release_name, clean_name, indexer_rlz_id, source_url, catalog_type, type, year, fail_reason, attempted_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          (release_name, clean_name, indexer_rlz_id, source_url, catalog_type, type, year, published_at, fail_reason, attempted_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(indexer_rlz_id) DO UPDATE SET
           retry_count  = retry_count + 1,
           attempted_at = excluded.attempted_at,
@@ -1511,6 +1563,7 @@ class DatabaseManager {
         item.catalog_type || null,
         item.type || null,
         item.year || null,
+        Number.isFinite(Number(item.published_at)) ? Number(item.published_at) : null,
         item.fail_reason || null,
         Date.now()
       );

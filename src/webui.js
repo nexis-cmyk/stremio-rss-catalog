@@ -11,6 +11,10 @@ const { sendAppriseNotification } = require('./services/appriseService');
 const { getStrings }              = require('./services/notifStrings');
 const crypto = require('crypto');
 const SUPPORTED_CATALOG_TYPES = ['movie', 'series', 'anime'];
+const CATALOG_SORT_MODES = new Set([
+  'rss_date_desc', 'rss_date_asc', 'added_desc', 'added_asc',
+  'year_desc', 'year_asc', 'name_asc', 'name_desc'
+]);
 
 const MAINTENANCE_MIGRATIONS = [
   {
@@ -195,6 +199,10 @@ class WebUI {
   }
 
   setupRoutes() {
+    this.app.get('/healthz', (req, res) => {
+      res.json({ status: 'ok' });
+    });
+
     // ─── Pages ─────────────────────────────────────────────────────────────
     this.app.get('/', (req, res) => {
       if (req.session.authenticated) return res.redirect('/dashboard');
@@ -2692,6 +2700,11 @@ class WebUI {
 
   validateCatalogComposition(catalog) {
     const filters = { ...(catalog.filters || {}) };
+    const sortMode = filters.sort_mode || 'rss_date_desc';
+    if (!CATALOG_SORT_MODES.has(sortMode)) {
+      throw new Error('Sortiermodus ungültig');
+    }
+    filters.sort_mode = sortMode;
     const requestedIds = Array.isArray(filters.catalog_ids)
       ? [...new Set(filters.catalog_ids.map(String).filter(Boolean))]
       : [];
