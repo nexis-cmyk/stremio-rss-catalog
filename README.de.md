@@ -133,6 +133,8 @@ Screenshots der neuen Oberfläche folgen in Kürze.
 
 ## Schnellstart
 
+Eine ausführliche Anleitung für den Serverbetrieb mit Docker Compose finden Sie in [DEPLOYMENT.de.md](./DEPLOYMENT.de.md).
+
 [docker-compose.yml](./docker-compose.yml) kopieren oder erstellen:
 
 ```yaml
