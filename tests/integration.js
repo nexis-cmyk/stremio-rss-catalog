@@ -119,11 +119,15 @@ function verifyPublishedSchemaUpgrade() {
   const upgraded = new DatabaseManager(dbPath);
   try {
     const createdBackups = fs.readdirSync(backupDir).filter(name => !backupsBefore.has(name));
-    assert.ok(createdBackups.some(name => /before-schema-v0-to-v6\.db$/.test(name)));
-    assert.equal(upgraded.db.pragma('user_version', { simple: true }), 6);
+    assert.ok(createdBackups.some(name => /before-schema-v0-to-v7\.db$/.test(name)));
+    assert.equal(upgraded.db.pragma('user_version', { simple: true }), 7);
     assert.equal(upgraded.getConfig('tmdb_api_key'), 'legacy-key');
     assert.equal(upgraded.getMediaByImdbId('tt7654321').name, 'Média existant');
     assert.equal(upgraded.db.prepare('SELECT COUNT(*) AS total FROM releases').get().total, 1);
+    assert.equal(
+      upgraded.db.prepare('SELECT published_at FROM releases WHERE indexer_rlz_id = ?').get('legacy-release').published_at,
+      1000
+    );
     const sources = JSON.parse(upgraded.getConfig('newznab_sources'));
     assert.equal(sources.find(source => source.id === 'default-cap').maxItemsPerCategory, 10000000);
     assert.equal(sources.find(source => source.id === 'custom-cap').maxItemsPerCategory, 424242);
@@ -773,6 +777,18 @@ async function main() {
     assert.equal(pttParsed[0].type, 'series');
     assert.equal(pttParsed[0].year, '2015');
     assert.equal(pttParsed[0].parsed_release.resolution, '1080p');
+    const datedParsed = pttRssParser._parseItems([{
+      title: 'Film.Date.2026.FRENCH.1080p.WEB-DL',
+      guid: 'dated-test',
+      pubDate: 'Thu, 30 Jul 2026 17:51:20 GMT'
+    }], 'films', `${baseUrl}/rss`);
+    assert.equal(datedParsed[0].published_at, Date.parse('Thu, 30 Jul 2026 17:51:20 GMT'));
+    const invalidDateParsed = pttRssParser._parseItems([{
+      title: 'Film.Sans.Date.2026.FRENCH.1080p.WEB-DL',
+      guid: 'invalid-date-test',
+      pubDate: 'not-a-date'
+    }], 'films', `${baseUrl}/rss`);
+    assert.equal(invalidDateParsed[0].published_at, null);
     const legacyEpisode = pttRssParser.parseReleaseName(
       'Emission.Speciale.2x03.FRENCH.HDTV.2026'
     );
@@ -1523,6 +1539,53 @@ async function main() {
     });
     assert.deepEqual(db.getCustomCatalogMedia(catalog).map(item => item.imdb_id), ['tt0000123']);
     assert.equal(db.countCustomCatalogMedia(catalog), 1);
+
+    const sortMedia = [
+      ['ttsorta', 'Zeta Film', '2024', 3000],
+      ['ttsortb', 'Alpha Film', '2026', 2000],
+      ['ttsortc', 'Beta Film', '2025', 1000]
+    ];
+    for (const [imdb_id, name, year, first_seen_at] of sortMedia) {
+      db.addMedia({
+        imdb_id, tmdb_id: imdb_id.slice(5), type: 'movie', catalog_type: 'films',
+        name, year, genres: [], keywords: [], release_name: `${name}.${year}`,
+        first_seen_at
+      });
+    }
+    db.addRelease({ media_imdb_id: 'ttsorta', release_name: 'Zeta.old', indexer_rlz_id: 'sort-a-old', source_url: 'rss:sort', published_at: 1000, added_at: 3000 });
+    db.addRelease({ media_imdb_id: 'ttsorta', release_name: 'Zeta.new-other-source', indexer_rlz_id: 'sort-a-new', source_url: 'rss:other', published_at: 4000, added_at: 4000 });
+    db.addRelease({ media_imdb_id: 'ttsortb', release_name: 'Alpha', indexer_rlz_id: 'sort-b', source_url: 'rss:sort', published_at: 3000, added_at: 2000 });
+    db.addRelease({ media_imdb_id: 'ttsortc', release_name: 'Beta', indexer_rlz_id: 'sort-c', source_url: 'rss:sort', published_at: 2000, added_at: 1000 });
+    const sortCatalog = db.saveCustomCatalog({
+      id: 'custom_sorting', name: 'Sortierung', type: 'movie', source_urls: ['rss:sort'], filters: {}
+    });
+    assert.equal(sortCatalog.filters.sort_mode, undefined);
+    assert.deepEqual(db.getCustomCatalogMedia(sortCatalog).map(item => item.imdb_id), ['ttsortb', 'ttsortc', 'ttsorta']);
+    const sortCases = {
+      rss_date_asc: ['ttsorta', 'ttsortc', 'ttsortb'],
+      added_desc: ['ttsorta', 'ttsortb', 'ttsortc'],
+      added_asc: ['ttsortc', 'ttsortb', 'ttsorta'],
+      year_desc: ['ttsortb', 'ttsortc', 'ttsorta'],
+      year_asc: ['ttsorta', 'ttsortc', 'ttsortb'],
+      name_asc: ['ttsortb', 'ttsortc', 'ttsorta'],
+      name_desc: ['ttsorta', 'ttsortc', 'ttsortb']
+    };
+    for (const [sort_mode, expected] of Object.entries(sortCases)) {
+      const updated = db.saveCustomCatalog({ ...sortCatalog, filters: { sort_mode } });
+      assert.deepEqual(db.getCustomCatalogMedia(updated).map(item => item.imdb_id), expected, sort_mode);
+    }
+    const catalogValidation = Object.create(WebUI.prototype);
+    catalogValidation.db = db;
+    assert.equal(
+      catalogValidation.validateCatalogComposition({ type: 'movie', filters: {} }).sort_mode,
+      'rss_date_desc'
+    );
+    assert.throws(
+      () => catalogValidation.validateCatalogComposition({ type: 'movie', filters: { sort_mode: 'invalid' } }),
+      /Sortiermodus ungültig/
+    );
+    db.db.prepare("DELETE FROM custom_catalogs WHERE id = 'custom_sorting'").run();
+    db.db.prepare("DELETE FROM media WHERE imdb_id IN ('ttsorta', 'ttsortb', 'ttsortc')").run();
     const mixedCatalog = db.saveCustomCatalog({
       id: 'custom_mixed',
       name: 'Sources mixtes',
