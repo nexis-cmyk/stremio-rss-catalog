@@ -1,0 +1,1504 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stremio RSS Catalog</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<div class="app-layout">
+
+  <!-- ═══════════════════════════ SIDEBAR ═══════════════════════════ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <img src="/static/logo.png" alt="Logo" class="brand-logo">
+      <span class="brand-name">Stremio RSS Catalog</span>
+    </div>
+
+    <nav class="sidebar-nav">
+      <button class="nav-item active" data-section="overview">
+        <span class="nav-label" data-i18n="nav_overview">Vue d'ensemble</span>
+      </button>
+      <button class="nav-item" data-section="library">
+        <span class="nav-label" data-i18n="nav_library">Médiathèque</span>
+      </button>
+      <button class="nav-item" data-section="sources">
+        <span class="nav-label" data-i18n="nav_sources">Sources</span>
+      </button>
+      <button class="nav-item" data-section="catalogs">
+        <span class="nav-label" data-i18n="nav_catalogs">Catalogues</span>
+      </button>
+      <button class="nav-item" data-section="sync">
+        <span class="nav-label" data-i18n="nav_sync">Synchronisation</span>
+      </button>
+      <button class="nav-item" data-section="failures">
+        <span class="nav-label" data-i18n="nav_failures">Échecs</span>
+        <span class="nav-badge" id="failuresBadge" style="display:none"></span>
+      </button>
+      <button class="nav-item" data-section="config">
+        <span class="nav-label" data-i18n="nav_config">Configuration</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="footer-links">
+        <a href="https://github.com/Aerya/stremio-rss-catalog" target="_blank">GitHub</a>
+        <a href="https://upandclear.org" target="_blank">Blog</a>
+        <a href="https://ko-fi.com/upandclear" target="_blank" data-i18n="donate">Dragibus 🍬</a>
+      </div>
+      <div class="footer-controls">
+        <select id="langSelect" class="lang-select" onchange="setLanguage(this.value)">
+          <option value="fr">🇫🇷 FR</option>
+          <option value="en">🇬🇧 EN</option>
+          <option value="de">🇩🇪 DE</option>
+        </select>
+        <button class="btn-icon" id="themeBtn" onclick="toggleTheme()" title="Thème">🌙</button>
+        <button class="btn-icon btn-danger" onclick="doLogout()" title="Déconnexion">🚪</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ═══════════════════════════ MAIN ══════════════════════════════ -->
+  <main class="main-content">
+
+    <!-- ─── Vue d'ensemble ─────────────────────────────────────────── -->
+    <section id="section-overview" class="page-section active">
+      <div class="page-header">
+        <h2 data-i18n="nav_overview">Vue d'ensemble</h2>
+        <div class="by-line">
+          <span data-i18n="by">Par</span>&nbsp;<strong>Aerya</strong>
+          <img src="https://upandclear.org/wp-content/uploads/2024/06/Logo.detoure1.png.webp" alt="" class="avatar">
+          &nbsp;·&nbsp;
+          <a href="https://github.com/Aerya" target="_blank">GitHub</a>
+          &nbsp;·&nbsp;
+          <a href="https://upandclear.org" target="_blank">Blog</a>
+        </div>
+      </div>
+
+      <p class="desc-text" data-i18n="description_text" data-i18n-html="true">
+        Stremio RSS Catalog est un addon de création de catalogues Stremio à partir de flux RSS.
+      </p>
+
+      <!-- Catalogues -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label" data-i18n="stat_films">Films</div>
+          <div class="stat-value" id="statFilms">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label" data-i18n="stat_documentaires">Documentaires</div>
+          <div class="stat-value" id="statDocs">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label" data-i18n="stat_series">Séries</div>
+          <div class="stat-value" id="statSeries">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label" data-i18n="stat_emissions">Émissions TV</div>
+          <div class="stat-value" id="statEmissions">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label" data-i18n="stat_animes">Animés</div>
+          <div class="stat-value" id="statAnimes">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label" data-i18n="stat_concerts">Concerts</div>
+          <div class="stat-value" id="statConcerts">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label" data-i18n="stat_spectacles">Spectacles</div>
+          <div class="stat-value" id="statSpectacles">—</div>
+        </div>
+        <div class="stat-card accent">
+          <div class="stat-label" data-i18n="stat_indexed">Total indexés</div>
+          <div class="stat-value" id="statTotal">—</div>
+        </div>
+      </div>
+
+      <!-- Infos rapides -->
+      <div class="overview-info-row" style="margin-top:20px">
+        <div class="overview-info-card" id="ovLastSync">
+          <div class="ov-info-label" data-i18n="ov_last_sync">Dernière sync</div>
+          <div class="ov-info-value" id="ovLastSyncDate">—</div>
+          <div class="ov-info-sub" id="ovLastSyncStats"></div>
+        </div>
+        <div class="overview-info-card clickable" onclick="navigateTo('failures')" id="ovFailed">
+          <div class="ov-info-label" data-i18n="ov_failed">Releases en attente</div>
+          <div class="ov-info-value" id="ovFailedCount">—</div>
+          <div class="ov-info-sub" data-i18n="ov_failed_hint">cliquer pour voir</div>
+        </div>
+        <div class="overview-info-card clickable" onclick="navigateTo('sources')" id="ovSources">
+          <div class="ov-info-label" data-i18n="ov_sources">Sources RSS</div>
+          <div class="ov-info-value" id="ovSourcesCount">—</div>
+          <div class="ov-info-sub" data-i18n="ov_sources_hint">flux actifs</div>
+        </div>
+      </div>
+
+      <!-- Derniers ajouts par catégorie -->
+      <div style="margin-top:24px">
+        <h3 class="section-label" data-i18n="ov_recent">Derniers ajouts</h3>
+        <div id="ovRecentGrid">
+          <p class="text-muted" data-i18n="sync_loading">Chargement...</p>
+        </div>
+      </div>
+
+      <!-- Installation -->
+      <div class="card" style="margin-top:24px">
+        <h3 data-i18n="install_title">Installation dans Stremio</h3>
+        <p class="text-muted" style="margin:8px 0 12px" data-i18n="install_desc">
+          Une fois la 1ère synchronisation terminée, (ré)installez l'addon dans Stremio avec cette URL :
+        </p>
+        <div class="install-box">
+          <code id="installUrl" data-i18n="install_loading">Chargement...</code>
+          <button class="btn-sm" onclick="copyInstallUrl()" data-i18n="install_copy">Copier</button>
+          <button class="btn-primary btn-sm" onclick="openInStremio()" data-i18n="install_upgrade">Installer / mettre à niveau</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── Médiathèque ────────────────────────────────────────────── -->
+    <section id="section-library" class="page-section">
+      <div class="page-header">
+        <h2 data-i18n="nav_library">Médiathèque</h2>
+        <div class="library-controls">
+          <input type="search" id="libSearch" class="search-input"
+            data-i18n-placeholder="library_search_placeholder"
+            placeholder="Rechercher un titre..."
+            oninput="debounceLibSearch()">
+          <select id="libSort" class="select-sm" onchange="onSortChange()" title="Trier par">
+            <option value="date_desc" data-i18n="lib_sort_date_desc">Ajout ↓</option>
+            <option value="date_asc"  data-i18n="lib_sort_date_asc">Ajout ↑</option>
+            <option value="year_desc" data-i18n="lib_sort_year_desc">Année ↓</option>
+            <option value="year_asc"  data-i18n="lib_sort_year_asc">Année ↑</option>
+            <option value="name_asc"  data-i18n="lib_sort_name">Titre A-Z</option>
+          </select>
+          <div class="year-filter-wrap" id="libYearWrap">
+            <div class="year-quick-pills" id="libYearQuick"></div>
+            <input type="text" id="libYearInput" class="year-input"
+              placeholder="ex: 2010 ou 2000-2009"
+              title="Année ou plage d'années"
+              oninput="debounceYearInput(this.value)">
+          </div>
+          <select id="libLimit" class="select-sm" onchange="onLimitChange()">
+            <option value="25">25</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+            <option value="250">250</option>
+          </select>
+          <div class="view-toggle" id="libViewToggle">
+            <button class="vt-btn active" data-vt="grid" onclick="setLibView('grid')">⊞ Affiches</button>
+            <button class="vt-btn" data-vt="list" onclick="setLibView('list')">☰ Liste</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="catalog-tabs" id="catalogTabs">
+        <button class="tab-btn active" data-catalog="">
+          <span data-i18n="library_all">Tous</span>
+          <span class="tab-count" id="tabCountAll"></span>
+        </button>
+        <button class="tab-btn" data-catalog="films">
+          <span data-i18n="stat_films">Films</span>
+          <span class="tab-count" id="tabCountFilms"></span>
+        </button>
+        <button class="tab-btn" data-catalog="documentaires">
+          <span data-i18n="stat_documentaires">Documentaires</span>
+          <span class="tab-count" id="tabCountDocs"></span>
+        </button>
+        <button class="tab-btn" data-catalog="series">
+          <span data-i18n="stat_series">Séries</span>
+          <span class="tab-count" id="tabCountSeries"></span>
+        </button>
+        <button class="tab-btn" data-catalog="emissions">
+          <span data-i18n="stat_emissions">Émissions TV</span>
+          <span class="tab-count" id="tabCountEmissions"></span>
+        </button>
+        <button class="tab-btn" data-catalog="animés">
+          <span data-i18n="stat_animes">Animés</span>
+          <span class="tab-count" id="tabCountAnimes"></span>
+        </button>
+        <button class="tab-btn" data-catalog="concerts">
+          <span data-i18n="stat_concerts">Concerts</span>
+          <span class="tab-count" id="tabCountConcerts"></span>
+        </button>
+        <button class="tab-btn" data-catalog="spectacles">
+          <span data-i18n="stat_spectacles">Spectacles</span>
+          <span class="tab-count" id="tabCountSpectacles"></span>
+        </button>
+      </div>
+
+      <div id="libraryGrid" class="media-grid"></div>
+      <div id="libraryPager" class="pager"></div>
+    </section>
+
+    <!-- ─── Sources ───────────────────────────────────────────────── -->
+    <section id="section-sources" class="page-section">
+      <div class="page-header">
+        <h2 data-i18n="nav_sources">Sources</h2>
+        <button class="btn-sm" onclick="loadSourceManager()">↺ Actualiser</button>
+      </div>
+
+      <div class="source-toolbar card">
+        <input id="sourceSearch" type="search" placeholder="Rechercher une source…" oninput="applySourceFilters()">
+        <div class="source-tabs" id="sourceTabs">
+          <button class="source-tab active" data-source-tab="all" onclick="selectSourceTab('all')">Toutes</button>
+          <button class="source-tab" data-source-tab="rss" onclick="selectSourceTab('rss')">RSS</button>
+          <button class="source-tab" data-source-tab="pastebin" onclick="selectSourceTab('pastebin')">Pastebin</button>
+          <button class="source-tab" data-source-tab="webdav" onclick="selectSourceTab('webdav')">WebDAV</button>
+          <button class="source-tab" data-source-tab="mediaserver" onclick="selectSourceTab('mediaserver')">Plex/Jellyfin</button>
+          <button class="source-tab" data-source-tab="indexer" onclick="selectSourceTab('indexer')">Indexeurs</button>
+          <button class="source-tab" data-source-tab="wacustom" onclick="selectSourceTab('wacustom')">WaStream/WaCustom</button>
+          <button class="source-tab" data-source-tab="streamfusion" onclick="selectSourceTab('streamfusion')">StreamFusion</button>
+          <button class="source-tab" data-source-tab="cometnet" onclick="selectSourceTab('cometnet')">CometNet</button>
+          <button class="source-tab" data-source-tab="stremio" onclick="selectSourceTab('stremio')">Stremio</button>
+          <button class="source-tab" data-source-tab="diagnostics" onclick="selectSourceTab('diagnostics')">Diagnostics</button>
+        </div>
+        <div class="integration-cat-hint">
+          Les limites de sécurité peuvent atteindre 10 000 000 : cette valeur
+          correspond au mode quasi illimité. Elle protège la mémoire pendant une
+          collecte et ne limite pas la taille totale de la médiathèque.
+        </div>
+      </div>
+
+      <details class="card source-group" data-source-group="rss" open>
+        <summary><span data-i18n="sources_rss_title">RSS</span> <span class="source-group-count" id="rssGroupCount"></span></summary>
+        <input id="rssSourceEditId" type="hidden">
+        <div class="rss-row" style="margin-top:14px">
+          <input id="rssSourceName" type="text" placeholder="Nom de la source" data-i18n-placeholder="sources_name_placeholder" class="rss-name-input">
+          <input id="rssSourceUrl" type="url" placeholder="https://example.net/rss..." class="flex-1">
+          <select id="rssSourceForce" class="select-catalog">
+            <option value="auto">Détection automatique</option>
+            <option value="films">Films</option><option value="series">Séries</option>
+            <option value="documentaires">Documentaires</option><option value="emissions">Émissions TV</option>
+            <option value="animés">Animés</option><option value="concerts">Concerts</option>
+            <option value="spectacles">Spectacles</option>
+          </select>
+          <input id="rssSourceInterval" type="number" min="5" max="43200" placeholder="Fréquence (min)" title="Vide : fréquence globale">
+          <button type="button" class="btn-primary" id="rssSourceSubmit" onclick="saveRssSource()" data-i18n="sources_add">Ajouter</button>
+          <button type="button" class="btn-sm source-edit-cancel" id="rssSourceCancel" onclick="resetRssSourceForm()" hidden>Annuler</button>
+        </div>
+        <div id="rssSourceList" style="margin-top:14px"></div>
+      </details>
+
+      <details class="card source-group" data-source-group="pastebin">
+        <summary><span data-i18n="sources_pastebin_title">Pastebin</span> <span class="source-group-count" id="pastebinGroupCount"></span></summary>
+        <p class="text-muted" style="margin:8px 0 14px" data-i18n="sources_pastebin_desc">
+          URL directe, pointeur JSON ou index maître catégorisé.
+        </p>
+        <input id="pastebinEditId" type="hidden">
+        <div class="rss-row">
+          <input id="pastebinName" type="text" placeholder="Nom de la source" data-i18n-placeholder="sources_name_placeholder" class="rss-name-input">
+          <input id="pastebinUrl" type="url" placeholder="https://paste.example/raw/..." class="flex-1">
+          <select id="pastebinForce" title="Catégorie forcée">
+            <option value="auto">Catégories du Pastebin</option>
+            <option value="films">Films</option><option value="series">Séries</option>
+            <option value="documentaires">Documentaires</option><option value="documentaires_series">Documentaires (séries)</option>
+            <option value="emissions">Émissions TV</option>
+            <option value="animes_films">Animés (films)</option><option value="animes_series">Animés (séries)</option>
+            <option value="concerts">Concerts</option>
+            <option value="spectacles">Spectacles</option>
+          </select>
+          <input id="pastebinMaxDepth" type="number" min="0" max="10" value="5"
+            placeholder="Profondeur" title="Nombre maximal de niveaux de renvois Pastebin suivis">
+          <input id="pastebinMaxPages" type="number" min="1" max="5000" value="1000"
+            placeholder="Pages max." title="Nombre maximal d’URLs Pastebin lues pendant une collecte">
+          <input id="pastebinInterval" type="number" min="5" max="43200" placeholder="Fréquence (min)" title="Vide : fréquence globale">
+          <button type="button" class="btn-sm" onclick="previewPastebin()" data-i18n="sources_preview">Prévisualiser</button>
+          <button type="button" class="btn-primary" id="pastebinSubmit" onclick="savePastebin()" data-i18n="sources_add">Ajouter</button>
+          <button type="button" class="btn-sm" id="pastebinCancel" onclick="resetPastebinForm()" hidden>Annuler</button>
+        </div>
+        <div class="pastebin-tags-setting">
+          <label class="check-inline">
+            <input id="pastebinAssumeRequiredTags" type="checkbox" checked>
+            <span data-i18n="sources_pastebin_assume_tags">Considérer le contenu de ce Pastebin comme déjà conforme aux tags requis</span>
+          </label>
+          <a href="#required_tags" class="inline-help-link"
+            onclick="navigateToRequiredTags(event)"
+            data-i18n="sources_required_tags_link">Voir les tags requis</a>
+        </div>
+        <div class="integration-cat-hint" style="margin-top:8px" data-i18n="sources_pastebin_assume_tags_help">
+          À activer lorsque le Pastebin contient uniquement des médias dans la langue souhaitée,
+          mais que ses titres ne portent pas eux-mêmes les marqueurs FRENCH, MULTi, VFF, etc.
+          Désactivé, chaque titre doit correspondre à au moins un tag requis.
+        </div>
+        <div class="integration-cat-hint" style="margin-top:8px" data-i18n="sources_pastebin_depth_help">
+          Profondeur maximale : nombre de niveaux de renvois suivis depuis
+          l’adresse saisie. 0 lit uniquement cette adresse ; 1 suit ses liens directs ; 5 convient
+          aux index maîtres qui renvoient vers des catégories puis vers les listes de contenus.
+          Le maximum de pages limite séparément le nombre total d’adresses lues.
+        </div>
+        <div id="pastebinPreview" class="text-muted" style="margin-top:10px"></div>
+        <div id="pastebinList" style="margin-top:14px"></div>
+      </details>
+
+      <details class="card source-group" data-source-group="webdav">
+        <summary><span>WebDAV</span> <span class="source-group-count" id="webdavGroupCount"></span></summary>
+        <p class="text-muted" style="margin:8px 0 14px">
+          Parcourt récursivement un dossier WebDAV et identifie les films ou séries à partir des noms de fichiers.
+          La lecture reste assurée dans Stremio par un addon dédié comme
+          <a href="https://github.com/arvida42/davio" target="_blank" rel="noopener noreferrer">Davio ↗</a>.
+        </p>
+        <input id="webdavEditId" type="hidden">
+        <div class="config-grid">
+          <div class="field">
+            <label>Nom</label>
+            <input id="webdavName" type="text" placeholder="Ma vidéothèque WebDAV">
+          </div>
+          <div class="field">
+            <label>URL du dossier racine</label>
+            <input id="webdavUrl" type="password" autocomplete="off" placeholder="https://dav.example.net/Films/">
+          </div>
+          <div class="field">
+            <label>Utilisateur</label>
+            <input id="webdavUsername" type="password" autocomplete="off">
+          </div>
+          <div class="field">
+            <label>Mot de passe</label>
+            <input id="webdavPassword" type="password" autocomplete="new-password">
+          </div>
+          <div class="field">
+            <label>Classement</label>
+            <select id="webdavForce">
+              <option value="auto">Détection automatique</option>
+              <option value="films">Films</option><option value="series">Séries</option>
+              <option value="documentaires">Documentaires</option>
+              <option value="documentaires_series">Documentaires (séries)</option>
+              <option value="emissions">Émissions TV</option>
+              <option value="animes_films">Animés (films)</option><option value="animes_series">Animés (séries)</option>
+              <option value="concerts">Concerts</option><option value="spectacles">Spectacles</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Profondeur maximale</label>
+            <input id="webdavMaxDepth" type="number" min="0" max="20" value="8">
+          </div>
+          <div class="field">
+            <label>Maximum de fichiers par collecte</label>
+            <input id="webdavMaxItems" type="number" min="1" max="10000000" value="10000000">
+          </div>
+          <div class="field">
+            <label>Extensions vidéo</label>
+            <input id="webdavExtensions" type="text" value="mkv,mp4,avi,mov,m4v,webm,ts,m2ts,iso,strm">
+          </div>
+          <div class="field">
+            <label>Fréquence de collecte (min)</label>
+            <input id="webdavInterval" type="number" min="5" max="43200" placeholder="Vide : fréquence globale">
+          </div>
+          <div class="field">
+            <label><input id="webdavUseProxy" type="checkbox"> Utiliser le proxy global</label>
+            <small>Désactivé par défaut pour les serveurs WebDAV locaux.</small>
+          </div>
+          <div class="field">
+            <label><input id="webdavClearCredentials" type="checkbox"> Supprimer les identifiants enregistrés</label>
+            <small>À utiliser si le WebDAV devient accessible sans authentification.</small>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:14px">
+          <button type="button" class="btn-sm" onclick="previewWebdavSource()">Tester le parcours</button>
+          <button type="button" class="btn-primary" id="webdavSubmit" onclick="saveWebdavSource()">Ajouter</button>
+          <button type="button" class="btn-sm" id="webdavCancel" onclick="resetWebdavForm()" hidden>Annuler</button>
+        </div>
+        <div id="webdavPreview" class="text-muted" style="margin-top:10px"></div>
+        <div id="webdavList" style="margin-top:14px"></div>
+      </details>
+
+      <details class="card source-group" data-source-group="mediaserver">
+        <summary><span>Bibliothèques Plex/Jellyfin</span> <span class="source-group-count" id="mediaserverGroupCount"></span></summary>
+        <p class="text-muted" style="margin:8px 0 14px">
+          Importe directement les films et séries réellement présents dans des bibliothèques ou collections.
+          <a href="https://www.plex.tv/" target="_blank" rel="noopener noreferrer">Plex ↗</a>
+          · <a href="https://github.com/jellyfin/jellyfin" target="_blank" rel="noopener noreferrer">Jellyfin ↗</a>
+          · lecture Stremio possible avec
+          <a href="https://github.com/vanchaxy/plexio" target="_blank" rel="noopener noreferrer">Plexio ↗</a>
+          ou <a href="https://github.com/akarazniewicz/stremio-jellyfin" target="_blank" rel="noopener noreferrer">Stremio Jellyfin ↗</a>.
+        </p>
+        <input id="mediaServerEditId" type="hidden">
+        <div class="config-grid">
+          <div class="field">
+            <label>Type</label>
+            <select id="mediaServerKind"><option value="plex">Plex</option><option value="jellyfin">Jellyfin</option></select>
+          </div>
+          <div class="field">
+            <label>Nom</label>
+            <input id="mediaServerName" type="text" placeholder="Serveur familial">
+          </div>
+          <div class="field">
+            <label>URL du serveur</label>
+            <input id="mediaServerUrl" type="password" autocomplete="off" placeholder="http://plex:32400">
+          </div>
+          <div class="field">
+            <label>Jeton API</label>
+            <input id="mediaServerApiKey" type="password" autocomplete="new-password">
+          </div>
+          <div class="field">
+            <label>Maximum par collecte</label>
+            <input id="mediaServerMaxItems" type="number" min="1" max="10000000" value="10000000">
+          </div>
+          <div class="field">
+            <label>Page</label>
+            <input id="mediaServerPageSize" type="number" min="10" max="1000" value="500">
+          </div>
+          <div class="field">
+            <label>Fréquence de collecte (min)</label>
+            <input id="mediaServerInterval" type="number" min="5" max="43200" placeholder="Vide : fréquence globale">
+          </div>
+          <div class="field">
+            <label><input id="mediaServerUseProxy" type="checkbox"> Utiliser le proxy global</label>
+            <small>Désactivé par défaut pour les serveurs locaux.</small>
+          </div>
+        </div>
+        <div id="mediaServerTargets" class="catalog-source-choices" style="margin-top:12px"></div>
+        <div style="display:flex;gap:8px;margin-top:14px">
+          <button type="button" class="btn-sm" onclick="previewMediaServerSource()">Détecter les bibliothèques</button>
+          <button type="button" class="btn-primary" id="mediaServerSubmit" onclick="saveMediaServerSource()">Ajouter</button>
+          <button type="button" class="btn-sm" id="mediaServerCancel" onclick="resetMediaServerForm()" hidden>Annuler</button>
+        </div>
+        <div id="mediaServerPreview" class="text-muted" style="margin-top:10px"></div>
+        <div id="mediaServerList" style="margin-top:14px"></div>
+      </details>
+
+      <details class="card source-group" data-source-group="indexer">
+        <summary><span data-i18n="sources_newznab_title">API d’indexeurs type Prowlarr, Newznab direct…</span> <span class="source-group-count" id="indexerGroupCount"></span></summary>
+        <p class="text-muted" style="margin:8px 0 14px" data-i18n="sources_newznab_desc">
+          Sources Newznab, Prowlarr, Jackett/Torznab et NZBHydra2 paginées.
+        </p>
+        <p class="source-project-links">
+          Projets :
+          <a href="https://github.com/Prowlarr/Prowlarr" target="_blank" rel="noopener noreferrer">Prowlarr ↗</a>
+          · <a href="https://github.com/Jackett/Jackett" target="_blank" rel="noopener noreferrer">Jackett ↗</a>
+          · <a href="https://github.com/theotherp/nzbhydra2" target="_blank" rel="noopener noreferrer">NZBHydra2 ↗</a>
+        </p>
+        <input id="newznabEditId" type="hidden">
+        <div class="config-grid">
+          <div class="field">
+            <label data-i18n="sources_indexer_type">Type d’indexeur</label>
+            <select id="newznabSourceKind" onchange="updateIndexerHelp()">
+              <option value="newznab">Newznab/Torznab direct</option>
+              <option value="prowlarr">Prowlarr (Torznab)</option>
+              <option value="jackett">Jackett (Torznab)</option>
+              <option value="nzbhydra2">NZBHydra2 (Newznab)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label data-i18n="sources_name">Nom</label>
+            <input id="newznabSourceName" type="text" placeholder="Mon indexeur">
+          </div>
+          <div class="field">
+            <label data-i18n="sources_newznab_url">URL de l’API</label>
+            <input id="newznabSourceUrl" type="url" placeholder="https://site.fr/api">
+            <small id="indexerUrlHelp" data-i18n="sources_indexer_url_help">URL complète de l’endpoint API.</small>
+          </div>
+          <div class="field">
+            <label data-i18n="sources_newznab_key">Clé API</label>
+            <input id="newznabApiKey" type="password" autocomplete="off">
+          </div>
+          <div class="field newznab-catalog-field">
+            <label data-i18n="sources_newznab_catalogs">Catalogues à alimenter</label>
+            <div id="newznabCatalogTypes" class="catalog-source-choices newznab-catalog-choices">
+              <label class="catalog-source-choice"><input class="newznab-catalog-type" type="checkbox" value="films" checked> <span data-i18n="stat_films">Films</span></label>
+              <label class="catalog-source-choice"><input class="newznab-catalog-type" type="checkbox" value="series" checked> <span data-i18n="stat_series">Séries</span></label>
+              <label class="catalog-source-choice"><input class="newznab-catalog-type" type="checkbox" value="documentaires" checked> <span data-i18n="stat_documentaires">Documentaires</span></label>
+              <label class="catalog-source-choice"><input class="newznab-catalog-type" type="checkbox" value="emissions" checked> <span data-i18n="stat_emissions">Émissions TV</span></label>
+              <label class="catalog-source-choice"><input class="newznab-catalog-type" type="checkbox" value="animés" checked> <span data-i18n="stat_animes">Animés</span></label>
+              <label class="catalog-source-choice"><input class="newznab-catalog-type" type="checkbox" value="concerts" checked> <span data-i18n="stat_concerts">Concerts</span></label>
+              <label class="catalog-source-choice"><input class="newznab-catalog-type" type="checkbox" value="spectacles" checked> <span data-i18n="stat_spectacles">Spectacles</span></label>
+            </div>
+            <small data-i18n="sources_newznab_catalogs_help">Tout est sélectionné par défaut. Décochez les catalogues que cette source ne doit pas alimenter.</small>
+          </div>
+          <div class="field newznab-catalog-field">
+            <label class="check-inline">
+              <input id="newznabAutoCategories" type="checkbox" checked onchange="updateNewznabCategoryMode()">
+              <span data-i18n="sources_newznab_auto_categories">Détecter automatiquement les catégories de l’API</span>
+            </label>
+            <small data-i18n="sources_newznab_auto_categories_help">Le bouton Tester affiche et applique les identifiants correspondant aux catalogues cochés. Désactivez cette option pour saisir les catégories manuellement.</small>
+          </div>
+          <div class="field">
+            <label data-i18n="sources_newznab_movie_categories">Catégories Films</label>
+            <input id="newznabMovieCategories" type="text" value="2000" placeholder="2000">
+          </div>
+          <div class="field">
+            <label data-i18n="sources_newznab_series_categories">Catégories Séries</label>
+            <input id="newznabSeriesCategories" type="text" value="5000" placeholder="5000">
+          </div>
+          <div class="field">
+            <label data-i18n="sources_newznab_max_items">Maximum par catégorie et synchronisation</label>
+            <input id="newznabMaxItems" type="number" min="1" max="10000000" value="10000000">
+          </div>
+          <div class="field">
+            <label data-i18n="sources_newznab_delay">Délai entre les pages (ms)</label>
+            <input id="newznabRequestDelay" type="number" min="250" max="10000" step="250" value="750">
+          </div>
+          <div class="field">
+            <label>Fenêtre de recouvrement du curseur (h)</label>
+            <input id="newznabLookbackHours" type="number" min="1" max="720" value="24">
+          </div>
+          <div class="field">
+            <label>Fréquence de collecte (min)</label>
+            <input id="newznabInterval" type="number" min="5" max="43200" placeholder="Vide : fréquence globale">
+          </div>
+        </div>
+        <div class="integration-cat-hint" style="margin-top:12px" data-i18n="sources_indexer_collection_help">
+          Première collecte par lots, puis reprise incrémentale depuis le curseur mémorisé.
+          La fenêtre de recouvrement absorbe les retards ou réordonnancements de l’indexeur.
+        </div>
+        <div style="display:flex;gap:8px;margin-top:14px">
+          <button type="button" class="btn-sm" onclick="previewNewznabSource()" data-i18n="sources_test">Tester</button>
+          <button type="button" class="btn-primary" id="newznabSubmit" onclick="saveNewznabSource()" data-i18n="sources_add">Ajouter</button>
+          <button type="button" class="btn-sm" id="newznabCancel" onclick="resetNewznabForm()" hidden>Annuler</button>
+        </div>
+        <div id="newznabSourcePreview" class="text-muted" style="margin-top:10px"></div>
+        <div id="newznabSourceList" style="margin-top:14px"></div>
+      </details>
+
+      <details class="card source-group" data-source-group="wacustom">
+        <summary><span>Instances WaStream/WaCustom</span> <span class="source-group-count" id="wacustomGroupCount"></span></summary>
+        <p class="text-muted" style="margin:8px 0 14px">
+          Indexe les contenus WASource d’une instance WaStream ou WaCustom via leur API administrateur paginée.
+          Les liens de lecture ne sont pas copiés : seuls les identifiants, titres, types et années
+          nécessaires aux catalogues sont importés.
+        </p>
+        <p class="source-project-links">
+          Projets :
+          <a href="https://gitlab.com/10ho/wastream" target="_blank" rel="noopener noreferrer">WaStream ↗</a>
+          · <a href="https://github.com/dydy13014/wacustom" target="_blank" rel="noopener noreferrer">WaCustom ↗</a>
+        </p>
+        <input id="wacustomEditId" type="hidden">
+        <div class="config-grid">
+          <div class="field">
+            <label>Nom de l’instance</label>
+            <input id="wacustomName" type="text" placeholder="Mon WaCustom">
+          </div>
+          <div class="field">
+            <label>URL de l’instance</label>
+            <input id="wacustomUrl" type="password" autocomplete="off" placeholder="https://wacustom.example.net">
+          </div>
+          <div class="field">
+            <label>Mot de passe administrateur</label>
+            <input id="wacustomPassword" type="password" autocomplete="new-password">
+          </div>
+          <div class="field">
+            <label>Maximum par collecte</label>
+            <input id="wacustomMaxItems" type="number" min="1" max="10000000" value="10000000">
+          </div>
+          <div class="field">
+            <label>Taille d’une page</label>
+            <input id="wacustomPageSize" type="number" min="10" max="5000" value="1000">
+          </div>
+          <div class="field">
+            <label>Délai entre les pages (ms)</label>
+            <input id="wacustomDelay" type="number" min="0" max="10000" step="50" value="250">
+          </div>
+          <div class="field">
+            <label>Fréquence de collecte (min)</label>
+            <input id="wacustomInterval" type="number" min="5" max="43200" placeholder="Vide : fréquence globale">
+          </div>
+          <div class="field newznab-catalog-field">
+            <label data-i18n="sources_newznab_catalogs">Catalogues à alimenter</label>
+            <div id="wacustomCatalogTypes" class="catalog-source-choices newznab-catalog-choices"></div>
+          </div>
+        </div>
+        <div class="integration-cat-hint" style="margin-top:12px">
+          Le premier parcours est repris automatiquement par lots jusqu’à sa fin.
+          Ensuite, l’API est relue depuis les contenus les plus récents.
+        </div>
+        <div style="display:flex;gap:8px;margin-top:14px">
+          <button type="button" class="btn-sm" onclick="previewWaCustomSource()">Tester</button>
+          <button type="button" class="btn-primary" id="wacustomSubmit" onclick="saveWaCustomSource()">Ajouter</button>
+          <button type="button" class="btn-sm" id="wacustomCancel" onclick="resetWaCustomForm()" hidden>Annuler</button>
+        </div>
+        <div id="wacustomPreview" class="text-muted" style="margin-top:10px"></div>
+        <div id="wacustomList" style="margin-top:14px"></div>
+      </details>
+
+      <details class="card source-group" data-source-group="streamfusion">
+        <summary><span>Instances StreamFusion</span> <span class="source-group-count" id="streamfusionGroupCount"></span></summary>
+        <p class="text-muted" style="margin:8px 0 14px">
+          Importe le cache privé par l’API Peer officielle. Seuls les torrents
+          possédant déjà un identifiant IMDb ou TMDB alimentent
+          les catalogues. Le cache public n’est pas énumérable par cette API.
+        </p>
+        <p class="source-project-links">
+          Projet :
+          <a href="https://github.com/LimeHubs/stream-fusion-reborn" target="_blank" rel="noopener noreferrer">StreamFusion Reborn ↗</a>
+          · créez une Peer Key dans son interface d’administration.
+        </p>
+        <input id="streamFusionEditId" type="hidden">
+        <div class="config-grid">
+          <div class="field"><label>Nom de l’instance</label><input id="streamFusionName" type="text" placeholder="Mon StreamFusion"></div>
+          <div class="field"><label>URL de l’instance</label><input id="streamFusionUrl" type="password" autocomplete="off" placeholder="https://streamfusion.example.net"></div>
+          <div class="field"><label>Peer Key ID</label><input id="streamFusionKeyId" type="password" autocomplete="new-password"></div>
+          <div class="field"><label>Secret de la Peer Key</label><input id="streamFusionSecret" type="password" autocomplete="new-password"></div>
+          <div class="field"><label>Limite de sécurité par lot</label><input id="streamFusionMaxItems" type="number" min="1" max="10000000" value="10000000"></div>
+          <div class="field"><label>Taille d’une page</label><input id="streamFusionPageSize" type="number" min="1" max="2000" value="1000"></div>
+          <div class="field"><label>Délai entre les pages (ms)</label><input id="streamFusionDelay" type="number" min="0" max="10000" value="100"></div>
+          <div class="field"><label>Fréquence de collecte (min)</label><input id="streamFusionInterval" type="number" min="5" max="43200" placeholder="Vide : fréquence globale"></div>
+          <div class="field"><label class="check-inline"><input id="streamFusionUseProxy" type="checkbox"> Utiliser le proxy global</label></div>
+          <div class="field newznab-catalog-field">
+            <label data-i18n="sources_newznab_catalogs">Catalogues à alimenter</label>
+            <div id="streamFusionCatalogTypes" class="catalog-source-choices newznab-catalog-choices"></div>
+          </div>
+        </div>
+        <div class="integration-cat-hint" style="margin-top:12px">
+          Première collecte paginée, puis reprise incrémentale avec le timestamp et le curseur
+          fournis par StreamFusion. Le curseur n’est validé qu’après le traitement réussi des médias.
+        </div>
+        <div style="display:flex;gap:8px;margin-top:14px">
+          <button type="button" class="btn-sm" onclick="previewStreamFusionSource()">Tester</button>
+          <button type="button" class="btn-primary" id="streamFusionSubmit" onclick="saveStreamFusionSource()">Ajouter</button>
+          <button type="button" class="btn-sm" id="streamFusionCancel" onclick="resetStreamFusionForm()" hidden>Annuler</button>
+        </div>
+        <div id="streamFusionPreview" class="text-muted" style="margin-top:10px"></div>
+        <div id="streamFusionList" style="margin-top:14px"></div>
+      </details>
+
+      <details class="card source-group" data-source-group="cometnet">
+        <summary><span>Pairs CometNet ciblés</span> <span class="source-group-count" id="cometnetGroupCount"></span></summary>
+        <p class="text-muted" style="margin:8px 0 14px">
+          Se connecte uniquement au pair indiqué et reçoit passivement ses nouvelles annonces.
+          Aucune liste de pairs n’est demandée et aucune connexion vers les autres pairs n’est ouverte.
+          La couverture est incrémentale et non exhaustive : elle dépend des annonces que le pair ciblé
+          reçoit puis diffuse après l’activation de cette source.
+        </p>
+        <p class="source-project-links">
+          Projet et protocole :
+          <a href="https://github.com/g0ldyy/comet" target="_blank" rel="noopener noreferrer">Comet / CometNet ↗</a>
+        </p>
+        <input id="cometNetEditId" type="hidden">
+        <div class="config-grid">
+          <div class="field"><label>Nom du pair ciblé</label><input id="cometNetName" type="text" placeholder="Mon Comet local"></div>
+          <div class="field"><label>URL WebSocket CometNet</label><input id="cometNetUrl" type="password" autocomplete="off" placeholder="wss://comet.example.net"></div>
+          <div class="field"><label>Limite de sécurité par lot</label><input id="cometNetMaxItems" type="number" min="1" max="10000000" value="10000000"></div>
+          <div class="field newznab-catalog-field">
+            <label data-i18n="sources_newznab_catalogs">Catalogues à alimenter</label>
+            <div id="cometNetCatalogTypes" class="catalog-source-choices newznab-catalog-choices"></div>
+          </div>
+        </div>
+        <div class="integration-cat-hint" style="margin-top:12px">
+          <strong>Source d’appoint non exhaustive :</strong> CometNet ne remplace pas une API
+          paginée, un flux RSS ou un export de cache.<br>
+          L’identité cryptographique du pair est épinglée au premier test. Les annonces valides sont
+          conservées dans une boîte de réception locale, puis injectées dans les catalogues lors de la
+          prochaine synchronisation. CometNet fonctionnant par gossip, cette source reçoit les
+          annonces nouvelles qui lui sont routées ; le protocole actuel ne fournit pas d’export
+          exhaustif de l’historique du pair ciblé. Une pool CometNet sert à filtrer les contributeurs
+          de confiance ; elle ne déclenche pas la copie du cache existant et n’améliore donc pas le
+          rattrapage historique.
+        </div>
+        <div style="display:flex;gap:8px;margin-top:14px">
+          <button type="button" class="btn-sm" onclick="previewCometNetSource()">Tester et identifier</button>
+          <button type="button" class="btn-primary" id="cometNetSubmit" onclick="saveCometNetSource()">Ajouter</button>
+          <button type="button" class="btn-sm" id="cometNetCancel" onclick="resetCometNetForm()" hidden>Annuler</button>
+        </div>
+        <div id="cometNetPreview" class="text-muted" style="margin-top:10px"></div>
+        <div id="cometNetList" style="margin-top:14px"></div>
+      </details>
+
+      <details class="card source-group" data-source-group="stremio">
+        <summary><span data-i18n="sources_stremio_title">Manifestes Stremio</span> <span class="source-group-count" id="stremioGroupCount"></span></summary>
+        <p class="text-muted" style="margin:8px 0 14px" data-i18n="sources_stremio_desc">
+          Importe les catalogues déclarés par un autre addon.
+        </p>
+        <p class="source-project-links">
+          Documentation :
+          <a href="https://github.com/Stremio/stremio-addon-sdk" target="_blank" rel="noopener noreferrer">protocole des addons Stremio ↗</a>.
+          Exemples :
+          <a href="https://github.com/vanchaxy/plexio" target="_blank" rel="noopener noreferrer">Plexio ↗</a>
+          · <a href="https://github.com/akarazniewicz/stremio-jellyfin" target="_blank" rel="noopener noreferrer">Stremio Jellyfin ↗</a>
+          · <a href="https://github.com/TheBeastLT/stremio-kitsu-anime" target="_blank" rel="noopener noreferrer">Kitsu Anime ↗</a>
+          · métadonnées : <a href="https://github.com/cedya77/aiometadata" target="_blank" rel="noopener noreferrer">AIOMetadata ↗</a>.
+        </p>
+        <input id="stremioEditId" type="hidden">
+        <div class="rss-row">
+          <input id="stremioSourceName" type="text" placeholder="Nom de la source" data-i18n-placeholder="sources_name_placeholder" class="rss-name-input">
+          <input id="stremioSourceUrl" type="password" autocomplete="off"
+            placeholder="https://example.net/manifest.json?..." class="flex-1">
+          <input id="stremioMaxItems" type="number" min="1" max="10000000" value="10000000" title="Limite de sécurité par catalogue">
+          <input id="stremioInterval" type="number" min="5" max="43200" placeholder="Fréquence (min)" title="Vide : fréquence globale">
+          <button type="button" class="btn-sm" onclick="previewStremioSource()" data-i18n="sources_preview">Prévisualiser</button>
+          <button type="button" class="btn-primary" id="stremioSubmit" onclick="saveStremioSource()" data-i18n="sources_add">Ajouter</button>
+          <button type="button" class="btn-sm" id="stremioCancel" onclick="resetStremioForm()" hidden>Annuler</button>
+        </div>
+        <div id="stremioCatalogChoices" class="catalog-source-choices" style="margin-top:12px"></div>
+        <div id="stremioSourcePreview" class="text-muted" style="margin-top:10px"></div>
+        <div id="stremioSourceList" style="margin-top:14px"></div>
+      </details>
+
+      <details class="card source-group" data-source-group="all" open>
+        <summary data-i18n="sources_alerts_summary">Alertes d’indisponibilité et journal</summary>
+        <div class="source-alert-settings">
+          <h3 data-i18n="sources_alerts_title">Alertes d’indisponibilité</h3>
+          <p class="text-muted" data-i18n="sources_alerts_desc">
+            Une alerte est conservée ici puis envoyée par Discord et/ou Apprise si ces canaux sont activés.
+            Le seuil correspond au nombre d’échecs de collecte consécutifs. Une notification de
+            rétablissement est envoyée après une panne signalée.
+          </p>
+          <div class="config-grid">
+            <label class="toggle-row">
+              <input id="sourceAlertsEnabled" type="checkbox">
+              <span data-i18n="sources_alerts_enable">Activer les alertes par source</span>
+            </label>
+            <div class="field">
+              <label for="sourceAlertDefaultThreshold" data-i18n="sources_alerts_default">Seuil par défaut</label>
+              <input id="sourceAlertDefaultThreshold" type="number" min="1" max="100" value="3">
+            </div>
+          </div>
+          <div id="sourceAlertThresholdList" style="margin-top:12px"></div>
+          <button type="button" class="btn-primary" onclick="saveSourceAlerts()" style="margin-top:12px" data-i18n="sources_alerts_save">
+            Enregistrer les seuils
+          </button>
+          <h3 style="margin-top:20px" data-i18n="sources_alerts_log">Journal des alertes</h3>
+          <div id="sourceAlertHistory"><p class="text-muted">Chargement...</p></div>
+        </div>
+      </details>
+
+      <details class="card source-group" data-source-group="diagnostics">
+        <summary>Diagnostics détaillés des collectes</summary>
+        <div id="sourcesContainer"><p class="text-muted" data-i18n="sync_loading">Chargement...</p></div>
+      </details>
+
+      <details class="card source-group" data-source-group="all">
+        <summary>Export / import de la configuration</summary>
+        <p class="text-muted">Les secrets sont exclus par défaut. Leur export ou leur import exige une confirmation explicite.</p>
+        <div class="source-export-actions">
+          <button class="btn-sm" onclick="exportConfiguration(false)">Exporter sans secrets</button>
+          <button class="btn-sm" onclick="exportConfiguration(true)">Exporter avec secrets…</button>
+          <input id="configImportFile" type="file" accept="application/json">
+          <label><input id="configImportSecrets" type="checkbox"> Autoriser l’import des secrets</label>
+          <button class="btn-primary" onclick="importConfiguration()">Analyser et importer</button>
+        </div>
+        <div id="configImportStatus" class="text-muted"></div>
+      </details>
+    </section>
+
+    <!-- ─── Catalogues personnalisés ──────────────────────────────── -->
+    <section id="section-catalogs" class="page-section">
+      <div class="page-header">
+        <h2 data-i18n="nav_catalogs">Catalogues</h2>
+        <button class="btn-sm" onclick="loadCatalogManager()">↺ Actualiser</button>
+      </div>
+
+      <div class="card integration-cat-hint" style="margin-bottom:20px" data-i18n="catalogs_availability_goal">
+        Objectif : transformer les contenus réellement repérés dans vos sources en catalogues
+        Stremio utiles. Les guides ne créent pas de disponibilité : ils sélectionnent et ordonnent
+        uniquement les médias déjà présents dans la médiathèque locale.
+      </div>
+
+      <details class="card" style="margin-bottom:20px" open>
+        <summary>Guides externes</summary>
+        <p class="text-muted" style="margin:8px 0 14px">
+          Une liste sert de guide d’ordre et de sélection. Elle n’importe aucun média :
+          seuls les contenus déjà indexés par Stremio RSS Catalog peuvent apparaître.
+          <a href="https://mdblist.com/" target="_blank" rel="noopener noreferrer">MDBList ↗</a> ·
+          <a href="https://github.com/Woahai321/list-sync" target="_blank" rel="noopener noreferrer">ListSync ↗</a> ·
+          <a href="https://github.com/giuseppe99barchetta/SuggestArr" target="_blank" rel="noopener noreferrer">SuggestArr ↗</a> ·
+          <a href="https://github.com/agregarr/agregarr" target="_blank" rel="noopener noreferrer">Agregarr ↗</a>
+        </p>
+        <input id="mdblistEditId" type="hidden">
+        <div class="config-grid">
+          <div class="field">
+            <label>Type de guide</label>
+            <select id="guideKind" onchange="updateGuideFields()">
+              <option value="mdblist">MDBList</option>
+              <option value="listsync">ListSync</option>
+              <option value="suggestarr">SuggestArr</option>
+              <option value="agregarr">Agregarr</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Nom du guide</label>
+            <input id="mdblistName" type="text" placeholder="Tendances cinéma France">
+          </div>
+          <div class="field">
+            <label id="guideUrlLabel">URL de la liste ou identifiant MDBList</label>
+            <input id="mdblistUrl" type="url" placeholder="https://mdblist.com/lists/utilisateur/ma-liste">
+          </div>
+          <div class="field guide-field-apikey">
+            <label id="guideApiKeyLabel">Clé API MDBList</label>
+            <input id="mdblistApiKey" type="password" autocomplete="new-password">
+          </div>
+          <div class="field guide-field-listsync" hidden>
+            <label>Type de liste ListSync</label>
+            <input id="guideListType" type="text" placeholder="imdb, trakt, letterboxd…">
+          </div>
+          <div class="field guide-field-listsync" hidden>
+            <label>Identifiant de liste ListSync</label>
+            <input id="guideListId" type="text" list="guideCollectionChoices" placeholder="top ou identifiant configuré">
+            <datalist id="guideCollectionChoices"></datalist>
+          </div>
+          <div class="field guide-field-agregarr" hidden>
+            <label>Collection Agregarr</label>
+            <div style="display:flex;gap:8px">
+              <select id="guideAgregarrCollection">
+                <option value="">Détectez les collections disponibles</option>
+              </select>
+              <button type="button" class="btn-sm" onclick="detectAgregarrCollections()">Détecter</button>
+            </div>
+          </div>
+          <div class="field guide-field-suggestarr" hidden>
+            <label>Identifiant SuggestArr</label>
+            <input id="guideUsername" type="text" autocomplete="username">
+          </div>
+          <div class="field guide-field-suggestarr" hidden>
+            <label>Mot de passe SuggestArr</label>
+            <input id="guidePassword" type="password" autocomplete="new-password">
+          </div>
+          <div class="field guide-field-suggestarr" hidden>
+            <label>Statuts de recommandations</label>
+            <select id="guideStatuses" multiple size="4">
+              <option value="awaiting_approval" selected>En attente d’approbation</option>
+              <option value="queued">En file</option>
+              <option value="submitted">Envoyées</option>
+              <option value="failed">En erreur</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Maximum d’éléments</label>
+            <input id="mdblistMaxItems" type="number" min="1" max="10000000" value="10000000">
+          </div>
+          <div class="field">
+            <label>Fréquence de mise à jour (min)</label>
+            <input id="mdblistInterval" type="number" min="5" max="43200" placeholder="Vide : fréquence globale">
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button type="button" class="btn-sm" onclick="previewMDBListGuide()">Tester</button>
+          <button type="button" class="btn-primary" id="mdblistSubmit" onclick="saveMDBListGuide()">Ajouter et synchroniser</button>
+          <button type="button" class="btn-sm" id="mdblistCancel" onclick="resetMDBListForm()" hidden>Annuler</button>
+          <span id="mdblistPreview" class="text-muted"></span>
+        </div>
+        <div id="mdblistGuideList" style="margin-top:14px"></div>
+      </details>
+
+      <div class="card" style="margin-bottom:20px">
+        <h3 id="catalogFormTitle" data-i18n="catalogs_create">Créer un catalogue</h3>
+        <input id="catalogEditId" type="hidden">
+        <div class="config-grid" style="margin-top:14px">
+          <div class="field">
+            <label data-i18n="catalogs_name">Nom affiché dans Stremio</label>
+            <input id="catalogName" type="text" placeholder="Films 2026" data-i18n-placeholder="catalogs_name_placeholder" required>
+          </div>
+          <div class="field">
+            <label data-i18n="catalogs_type">Type Stremio</label>
+            <select id="catalogMediaType" onchange="renderCatalogCompositionChoices([])">
+              <option value="movie">Films</option>
+              <option value="series">Séries</option>
+              <option value="anime">Anime (type Stremio natif)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label data-i18n="catalogs_compose">Catalogues à fusionner</label>
+            <div id="catalogCompositionChoices" class="catalog-source-choices"></div>
+            <small data-i18n="catalogs_compose_hint">
+              Union réversible : modifiez ce catalogue plus tard pour ajouter ou retirer des catalogues.
+              Seuls les catalogues du même type peuvent être mélangés.
+            </small>
+          </div>
+          <div class="field">
+            <label data-i18n="catalogs_guide_label">Leitliste für Auswahl und Reihenfolge</label>
+            <select id="catalogGuide">
+              <option value="" data-i18n="catalogs_guide_none">Keine Leitliste – nur lokale Filter</option>
+            </select>
+            <small data-i18n="catalogs_guide_help">Der Katalog enthält die Schnittmenge aus Leitliste und bereits indizierten Medien.</small>
+          </div>
+          <div class="field">
+            <label data-i18n="catalogs_sort">Ordre du catalogue</label>
+            <select id="catalogSortMode">
+              <option value="rss_date_desc" data-i18n="catalogs_sort_rss_desc">RSS-Datum — neu nach alt</option>
+              <option value="rss_date_asc" data-i18n="catalogs_sort_rss_asc">RSS-Datum — alt nach neu</option>
+              <option value="added_desc" data-i18n="catalogs_sort_added_desc">Addon-Aufnahme — neu nach alt</option>
+              <option value="added_asc" data-i18n="catalogs_sort_added_asc">Addon-Aufnahme — alt nach neu</option>
+              <option value="year_desc" data-i18n="catalogs_sort_year_desc">Filmjahr — neu nach alt</option>
+              <option value="year_asc" data-i18n="catalogs_sort_year_asc">Filmjahr — alt nach neu</option>
+              <option value="name_asc" data-i18n="catalogs_sort_name_asc">Titel — A–Z</option>
+              <option value="name_desc" data-i18n="catalogs_sort_name_desc">Titel — Z–A</option>
+            </select>
+            <small data-i18n="catalogs_sort_help">Bei RSS-Sortierung zählt das Veröffentlichungsdatum des neuesten passenden Releases.</small>
+          </div>
+          <div class="field">
+            <label data-i18n="catalogs_year_filter">Filtre année</label>
+            <select id="catalogYearMode">
+              <option value="include" data-i18n="catalogs_year_include">Uniquement les années</option>
+              <option value="exclude" data-i18n="catalogs_year_exclude">Tout sauf les années</option>
+            </select>
+          </div>
+          <div class="field">
+            <label data-i18n="catalogs_years">Années, séparées par des virgules</label>
+            <input id="catalogYears" type="text" placeholder="2026 ou 2025,2026">
+          </div>
+          <div class="field">
+            <label data-i18n="catalogs_year_min">Année minimale</label>
+            <input id="catalogYearMin" type="number" min="1900" max="2100" placeholder="2020">
+          </div>
+          <div class="field">
+            <label data-i18n="catalogs_year_max">Année maximale</label>
+            <input id="catalogYearMax" type="number" min="1900" max="2100" placeholder="2026">
+          </div>
+          <div class="field">
+            <label data-i18n="catalogs_keywords_include">Mots requis, séparés par des virgules</label>
+            <input id="catalogKeywordsInclude" type="text" placeholder="Marvel, IMAX">
+          </div>
+          <div class="field">
+            <label data-i18n="catalogs_keywords_exclude">Mots exclus, séparés par des virgules</label>
+            <input id="catalogKeywordsExclude" type="text" placeholder="CAM, TS">
+          </div>
+          <div class="field">
+            <label data-i18n="catalogs_genres_include">Genres à inclure</label>
+            <select id="catalogGenresInclude" multiple size="5">
+              <option value="28">Action</option><option value="12">Aventure</option>
+              <option value="16">Animation</option><option value="35">Comédie</option>
+              <option value="80">Crime</option><option value="99">Documentaire</option>
+              <option value="18">Drame</option><option value="14">Fantastique</option>
+              <option value="27">Horreur</option><option value="10402">Musique</option>
+              <option value="10749">Romance</option><option value="878">Science-fiction</option>
+              <option value="53">Thriller</option>
+            </select>
+          </div>
+          <div class="field">
+            <label data-i18n="catalogs_genres_exclude">Genres à exclure</label>
+            <select id="catalogGenresExclude" multiple size="5">
+              <option value="28">Action</option><option value="12">Aventure</option>
+              <option value="16">Animation</option><option value="35">Comédie</option>
+              <option value="80">Crime</option><option value="99">Documentaire</option>
+              <option value="18">Drame</option><option value="14">Fantastique</option>
+              <option value="27">Horreur</option><option value="10402">Musique</option>
+              <option value="10749">Romance</option><option value="878">Science-fiction</option>
+              <option value="53">Thriller</option>
+            </select>
+          </div>
+        </div>
+        <div class="field" style="margin-top:14px">
+          <label data-i18n="catalogs_sources">Sources utilisées — aucune sélection signifie toutes les sources</label>
+          <div id="catalogSourceChoices" class="catalog-source-choices"></div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;margin-top:16px;flex-wrap:wrap">
+          <button type="button" class="btn-sm" onclick="previewCatalog()" data-i18n="sources_preview">Prévisualiser</button>
+          <button type="button" class="btn-primary" onclick="saveCatalog()" data-i18n="catalogs_save">Speichern</button>
+          <button type="button" class="btn-sm" onclick="resetCatalogForm()" data-i18n="catalogs_cancel">Annuler</button>
+          <span id="catalogPreview" class="text-muted"></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 data-i18n="catalogs_configured">Catalogues configurés</h3>
+        <div id="catalogList" style="margin-top:14px"></div>
+      </div>
+
+      <details class="card" style="margin-top:20px">
+        <summary>Historique du manifeste Stremio</summary>
+        <p class="text-muted">Trace les apparitions, suspensions, reprises, renommages et suppressions de catalogues.</p>
+        <div id="manifestHistory" class="manifest-history"><span class="text-muted">Chargement…</span></div>
+      </details>
+    </section>
+
+    <!-- ─── Synchronisation ───────────────────────────────────────── -->
+    <section id="section-sync" class="page-section">
+      <div class="page-header">
+        <h2 data-i18n="nav_sync">Synchronisation</h2>
+      </div>
+
+      <div class="card" style="margin-bottom:20px">
+        <div id="autoRefreshStatus" class="auto-refresh-status">
+          <strong data-i18n="sync_auto_label">Synchronisation automatique :</strong>
+          <span id="autoRefreshState" data-i18n="sync_loading">Chargement...</span>
+        </div>
+        <div style="text-align:center;margin-top:16px">
+          <button class="btn-primary" onclick="startSync()" data-i18n="sync_start_btn">▶️ Collecter toutes les sources et actualiser les catalogues</button>
+        </div>
+        <div id="syncStatusBox" class="sync-status-box" style="display:none;margin-top:20px">
+          <div class="sync-stage" id="syncStage" data-i18n="sync_in_progress">En cours...</div>
+          <div class="progress-track">
+            <div class="progress-bar" id="progressBar" style="width:0%">
+              <span id="progressText">0%</span>
+            </div>
+          </div>
+          <p id="syncDetails" class="sync-details">Matched: 0 | Failed: 0</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 data-i18n="sync_history_title" style="margin-bottom:12px">Historique des synchronisations</h3>
+        <p class="desc-text" data-i18n="sync_history_desc" data-i18n-html="true" style="margin-bottom:16px">
+          Pour chaque release, Stremio RSS Catalog cherche le média correspondant sur TMDB.
+        </p>
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
+          <label style="margin:0;font-size:14px" data-i18n="sync_browse">Parcourir :</label>
+          <select id="dateFilter" class="select-sm" onchange="loadSyncHistoryByDate()">
+            <option value="" data-i18n="sync_last_3">Les 3 dernières</option>
+          </select>
+        </div>
+        <div id="syncHistoryContainer">
+          <p class="text-muted" data-i18n="sync_loading">Chargement...</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── Échecs ─────────────────────────────────────────────────── -->
+    <section id="section-failures" class="page-section">
+      <div class="page-header">
+        <h2 data-i18n="nav_failures">Releases échouées</h2>
+        <div style="display:flex;gap:8px">
+          <button class="btn-primary" onclick="retryFailed()" data-i18n="failed_retry_btn">♻️ Retry tout</button>
+          <button class="btn-danger" onclick="clearFailed()" data-i18n="failed_clear_btn">🗑 Vider</button>
+        </div>
+      </div>
+      <div class="card">
+        <p class="text-muted" id="failedCount" style="margin-bottom:12px"></p>
+        <div id="failedContainer">
+          <p class="text-muted" data-i18n="sync_loading">Chargement...</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── Configuration ─────────────────────────────────────────── -->
+    <section id="section-config" class="page-section">
+      <div class="page-header">
+        <h2 data-i18n="nav_config">Configuration</h2>
+      </div>
+      <form id="configForm" class="card config-form" onsubmit="saveConfig(event)">
+
+        <div class="config-section">
+          <h3 data-i18n="config_processing_title">Traitement des contenus</h3>
+          <div class="field">
+            <label for="required_tags" data-i18n="config_required_tags_label">Tags requis (filtrage avant parsing)</label>
+            <input type="text" id="required_tags" name="required_tags"
+              placeholder="FRENCH,MULTi,TRUEFRENCH,VOF,VFF,VFI,VFQ">
+            <small data-i18n="config_required_tags_help">Filtre les contenus collectés depuis toutes les sources avant leur parsing et leur matching. Un titre doit contenir au moins un des tags séparés par des virgules (ex. FRENCH, MULTi, VO, GERMAN). Laissez vide pour tout accepter. Une source déclarée conforme, comme un Pastebin, contourne ce filtre titre par titre.</small>
+          </div>
+        </div>
+
+        <div class="config-section">
+          <h3 data-i18n="config_identification_title">Services d’identification des contenus</h3>
+          <div class="field">
+            <label>
+              <span data-i18n="config_tmdb_key">Clé API TMDB</span>
+              <a href="https://www.themoviedb.org/settings/api" target="_blank" class="label-link">Obtenir une clé</a>
+            </label>
+            <input type="text" id="tmdb_api_key" name="tmdb_api_key">
+          </div>
+          <div class="field">
+            <label>
+              <span data-i18n="config_tvdb_key">Clé API TVDB (optionnel)</span>
+              <a href="https://www.thetvdb.com/api-information" target="_blank" class="label-link">Obtenir une clé</a>
+            </label>
+            <input type="text" id="tvdb_api_key" name="tvdb_api_key" placeholder="Optionnel">
+            <small data-i18n="config_tvdb_hint">
+              Améliore la détection des docu-séries. Clé gratuite sur thetvdb.com.
+            </small>
+          </div>
+          <div class="field">
+            <label>
+              <span data-i18n="config_mal_key">Client ID MyAnimeList (optionnel)</span>
+              <a href="https://myanimelist.net/apiconfig" target="_blank" class="label-link">Obtenir une clé</a>
+            </label>
+            <input type="text" id="mal_client_id" name="mal_client_id" placeholder="Optionnel">
+            <small data-i18n="config_mal_hint">
+              Améliore la détection et le matching des animés via MAL. Clé gratuite sur myanimelist.net/apiconfig.
+            </small>
+          </div>
+          <div class="field">
+            <div class="toggle-row" style="margin-bottom:4px">
+              <label class="toggle-switch">
+                <input type="checkbox" id="anilist_enabled" name="anilist_enabled">
+                <span class="slider"></span>
+              </label>
+              <label for="anilist_enabled" data-i18n="config_anilist_enable">
+                Activer AniList (complément MAL, sans clé API)
+              </label>
+            </div>
+            <small class="field-hint" data-i18n="config_anilist_hint">
+              AniList est utilisé en complément de MAL pour normaliser les titres d'animés. Gratuit et anonyme — aucune inscription requise.
+            </small>
+          </div>
+          <div class="field">
+            <div class="toggle-row" style="margin-bottom:4px">
+              <label class="toggle-switch">
+                <input type="checkbox" id="kitsu_enabled" name="kitsu_enabled">
+                <span class="slider"></span>
+              </label>
+              <label for="kitsu_enabled" data-i18n="config_kitsu_enable">
+                Activer Kitsu (matching anime natif, sans clé API)
+              </label>
+            </div>
+            <small class="field-hint" data-i18n="config_kitsu_hint">
+              Ajoute un fallback anime avec des identifiants Kitsu lorsque TMDB ne trouve pas le contenu.
+            </small>
+          </div>
+          <div class="field">
+            <label>
+              Addons Stremio de métadonnées en fallback
+              <a href="https://github.com/cedya77/aiometadata" target="_blank" class="label-link">AIOMetadata ↗</a>
+            </label>
+            <small class="field-hint">
+              Vous pouvez en ajouter plusieurs et choisir leur priorité. Ils sont interrogés dans l’ordre
+              après les identifiants directs et TMDB. Seuls les manifestes proposant une recherche
+              Films/Séries sont acceptés.
+            </small>
+            <input id="metadataProviderEditId" type="hidden">
+            <div class="source-grid" style="margin-top:10px">
+              <input id="metadataProviderName" type="text" placeholder="Nom du service">
+              <input id="metadataProviderUrl" type="password"
+                placeholder="https://metadata.exemple.fr/utilisateur/manifest.json"
+                autocomplete="off">
+              <input id="metadataProviderPriority" type="number" min="1" max="9999" value="100"
+                title="Priorité : le nombre le plus bas est interrogé en premier">
+              <label class="check-inline">
+                <input id="metadataProviderUseProxy" type="checkbox" checked> Proxy global
+              </label>
+              <button type="button" class="btn-sm" onclick="previewMetadataProvider()">Tester</button>
+              <button type="button" class="btn-primary" id="metadataProviderSubmit"
+                onclick="saveMetadataProvider()">Ajouter</button>
+              <button type="button" class="btn-sm" id="metadataProviderCancel"
+                onclick="resetMetadataProviderForm()" hidden>Annuler</button>
+            </div>
+            <div id="metadataProviderPreview" class="source-preview"></div>
+            <div id="metadataProviderList" class="source-list"></div>
+          </div>
+          <div class="field">
+            <label>
+              <span data-i18n="config_omdb_key">Clé API OMDb (concerts &amp; spectacles)</span>
+              <a href="https://www.omdbapi.com/apikey.aspx" target="_blank" class="label-link">Obtenir une clé</a>
+            </label>
+            <input type="text" id="omdb_api_key" name="omdb_api_key" placeholder="Requis pour concerts et spectacles">
+            <small data-i18n="config_omdb_hint">
+              Utilisé conjointement avec TMDB pour classifier les concerts (genre Music) et les spectacles. Clé gratuite sur omdbapi.com (1000 req/jour).
+            </small>
+          </div>
+        </div>
+
+        <div class="config-section">
+          <h3 data-i18n="config_rpdb_title">RPDB</h3>
+          <div class="toggle-row">
+            <label class="toggle-switch">
+              <input type="checkbox" id="rpdb_enabled" name="rpdb_enabled">
+              <span class="slider"></span>
+            </label>
+            <label for="rpdb_enabled">
+              <span data-i18n="config_rpdb_enable">Activer</span>
+              (<a href="https://ratingposterdb.com/examples/" target="_blank" data-i18n="config_rpdb_examples">exemples</a>)
+            </label>
+          </div>
+          <div class="field">
+            <label>
+              <a href="https://ratingposterdb.com/api-key/" target="_blank" data-i18n="config_rpdb_get_key">
+                Obtenir une clé gratuite
+              </a>
+            </label>
+            <input type="text" id="rpdb_api_key" name="rpdb_api_key"
+              data-i18n-placeholder="config_rpdb_placeholder" placeholder="Votre clé API RPDB">
+          </div>
+        </div>
+
+        <div class="config-section">
+          <h3>
+            PostersPlus
+            <a href="https://github.com/UmbraProjects/PostersPlus" target="_blank" class="label-link">GitHub ↗</a>
+          </h3>
+          <div class="toggle-row">
+            <label class="toggle-switch">
+              <input type="checkbox" id="postersplus_enabled" name="postersplus_enabled">
+              <span class="slider"></span>
+            </label>
+            <label for="postersplus_enabled" data-i18n="config_postersplus_enable">Utiliser PostersPlus en priorité pour les affiches</label>
+          </div>
+          <div class="field">
+            <label for="postersplus_url_template" data-i18n="config_postersplus_template">Template URL PostersPlus</label>
+            <textarea id="postersplus_url_template" name="postersplus_url_template" rows="4"
+              autocomplete="off"
+              placeholder="https://posters.example/poster?tmdb_id={tmdb_id}&amp;imdb_id={imdb_id}&amp;type={type}"></textarea>
+            <small>
+              Collez directement le template généré pour AIOMetadata. Les variables
+              <code>{tmdb_id}</code>, <code>{imdb_id}</code> et <code>{type}</code>
+              sont remplacées automatiquement. Si PostersPlus ne s’applique pas, RPDB puis l’affiche d’origine servent de repli.
+            </small>
+            <small class="field-hint" data-i18n="config_artwork_aiometadata_hint">
+              L’affiche choisie ici est incluse directement dans chaque réponse de catalogue.
+              Avec AIOMetadata, celui-ci peut néanmoins la conserver ou la remplacer selon ses
+              propres fournisseurs d’illustrations. Pour éviter un double réglage, choisissez
+              l’endroit qui doit faire autorité sur les affiches.
+            </small>
+          </div>
+          <button type="button" class="btn-sm" onclick="testPostersPlus()" data-i18n="config_postersplus_test">Tester avec un média indexé</button>
+          <div id="postersplusTestResult" class="text-muted" style="margin-top:8px"></div>
+          <div class="field" style="margin-top:14px">
+            <div class="toggle-row">
+              <label class="toggle-switch">
+                <input type="checkbox" id="image_cache_enabled" name="image_cache_enabled">
+                <span class="slider"></span>
+              </label>
+              <label for="image_cache_enabled" data-i18n="config_image_cache_enable">
+                Mettre les fichiers d’affiches en cache local
+              </label>
+            </div>
+            <small class="field-hint" data-i18n="config_image_cache_hint">
+              Le catalogue renvoie une URL de cette instance. L’image distante est téléchargée au
+              premier affichage, puis servie depuis /data/image-cache.
+            </small>
+          </div>
+          <div class="grid-2">
+            <div class="field">
+              <label for="image_cache_ttl_hours" data-i18n="config_image_cache_ttl">Durée du cache (heures)</label>
+              <input type="number" id="image_cache_ttl_hours" name="image_cache_ttl_hours"
+                min="1" max="8760" value="168">
+            </div>
+            <div class="field">
+              <label for="image_cache_max_mb" data-i18n="config_image_cache_size">Taille maximale (Mio)</label>
+              <input type="number" id="image_cache_max_mb" name="image_cache_max_mb"
+                min="10" max="102400" value="1024">
+            </div>
+          </div>
+        </div>
+
+        <div class="config-section">
+          <h3 data-i18n="config_proxy_title">Proxy</h3>
+          <div class="toggle-row">
+            <label class="toggle-switch">
+              <input type="checkbox" id="proxy_enabled" name="proxy_enabled">
+              <span class="slider"></span>
+            </label>
+            <label for="proxy_enabled" data-i18n="config_proxy_enable">Activer</label>
+          </div>
+          <div class="grid-2">
+            <div class="field">
+              <label data-i18n="config_proxy_protocol">Protocole</label>
+              <select id="proxy_protocol" name="proxy_protocol">
+                <option value="http">HTTP</option>
+                <option value="https">HTTPS</option>
+                <option value="socks4">SOCKS4</option>
+                <option value="socks5">SOCKS5</option>
+              </select>
+            </div>
+            <div class="field">
+              <label data-i18n="config_proxy_host">Hôte</label>
+              <input type="text" id="proxy_host" name="proxy_host" placeholder="127.0.0.1">
+            </div>
+            <div class="field">
+              <label data-i18n="config_proxy_port">Port</label>
+              <input type="number" id="proxy_port" name="proxy_port" placeholder="1080">
+            </div>
+            <div class="field">
+              <label data-i18n="config_proxy_username">Utilisateur (optionnel)</label>
+              <input type="text" id="proxy_username" name="proxy_username">
+            </div>
+          </div>
+          <div class="field">
+            <label data-i18n="config_proxy_password">Mot de passe (optionnel)</label>
+            <input type="password" id="proxy_password" name="proxy_password">
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;margin-top:4px">
+            <button type="button" class="btn-sm" onclick="testProxy()" data-i18n="config_proxy_test_btn">🔌 Tester la connexion</button>
+            <span id="proxyTestResult" style="font-size:13px"></span>
+          </div>
+        </div>
+
+        <div class="config-section">
+          <h3 data-i18n="config_auto_sync_title">Synchronisation automatique</h3>
+          <div class="integration-cat-hint" style="margin-bottom:14px" data-i18n="config_auto_sync_pipeline">
+            Le planificateur vérifie chaque minute les échéances. Il collecte uniquement les sources
+            arrivées à échéance, puis normalise et enrichit le lot, l’injecte dans les catalogues non
+            gelés et invalide leur cache. Stremio lit alors immédiatement le contenu actualisé depuis
+            la même URL d’addon : il n’existe pas de second « envoi » à programmer.
+          </div>
+          <div class="toggle-row">
+            <label class="toggle-switch">
+              <input type="checkbox" id="auto_refresh_enabled" name="auto_refresh_enabled">
+              <span class="slider"></span>
+            </label>
+            <label for="auto_refresh_enabled" data-i18n="config_auto_sync_enable">Activer</label>
+          </div>
+          <div class="field">
+            <label data-i18n="config_refresh_interval">Fréquence par défaut des sources (minutes)</label>
+            <input type="number" id="refresh_interval" name="refresh_interval" min="5" placeholder="60">
+            <small>Chaque source peut remplacer cette fréquence depuis la page Sources.</small>
+          </div>
+          <div class="field" style="margin-top:16px">
+            <div class="toggle-row">
+              <label class="toggle-switch">
+                <input type="checkbox" id="availability_enabled" name="availability_enabled">
+                <span class="slider"></span>
+              </label>
+              <label for="availability_enabled" data-i18n="config_availability_enable">
+                Masquer les contenus qui ne sont plus retrouvés
+              </label>
+            </div>
+            <small class="field-hint" data-i18n="config_availability_hint">
+              S’applique uniquement aux synchronisations manuelles complètes et aux sources ayant
+              effectivement renvoyé un inventaire. À activer seulement si vos sources réénumèrent
+              leurs contenus : un flux RSS limité aux nouveautés n’est pas un inventaire exhaustif.
+            </small>
+          </div>
+          <div class="grid-2">
+            <div class="field">
+              <label for="availability_missing_scans" data-i18n="config_availability_scans">
+                Scans complets absents avant masquage
+              </label>
+              <input type="number" id="availability_missing_scans" name="availability_missing_scans"
+                min="1" max="100" value="3">
+            </div>
+            <div class="field">
+              <label for="availability_expiration_days" data-i18n="config_availability_expiration">
+                Expiration facultative (jours, 0 = désactivée)
+              </label>
+              <input type="number" id="availability_expiration_days" name="availability_expiration_days"
+                min="0" max="36500" value="0">
+            </div>
+          </div>
+        </div>
+
+        <div class="config-section">
+          <h3 data-i18n="config_discord_title">Discord</h3>
+          <div class="toggle-row">
+            <label class="toggle-switch">
+              <input type="checkbox" id="discord_notifications_enabled" name="discord_notifications_enabled">
+              <span class="slider"></span>
+            </label>
+            <label for="discord_notifications_enabled" data-i18n="config_discord_enable">
+              Activer les notifications
+            </label>
+          </div>
+          <div class="field">
+            <label data-i18n="config_discord_webhook">URL du webhook Discord</label>
+            <input type="url" id="discord_webhook_url" name="discord_webhook_url"
+              placeholder="https://discord.com/api/webhooks/...">
+          </div>
+          <div class="toggle-row">
+            <label class="toggle-switch">
+              <input type="checkbox" id="discord_enhanced_notifications_enabled"
+                name="discord_enhanced_notifications_enabled">
+              <span class="slider"></span>
+            </label>
+            <label for="discord_enhanced_notifications_enabled" data-i18n="config_discord_enhanced">
+              Notifications enrichies (galerie d'affiches)
+            </label>
+          </div>
+          <div class="toggle-row">
+            <label class="toggle-switch">
+              <input type="checkbox" id="discord_rpdb_posters_enabled" name="discord_rpdb_posters_enabled">
+              <span class="slider"></span>
+            </label>
+            <label for="discord_rpdb_posters_enabled" data-i18n="config_discord_rpdb">
+              Affiches RPDB dans Discord
+            </label>
+          </div>
+        </div>
+
+        <div class="config-section">
+          <h3 data-i18n="config_notif_lang_title">Langue des notifications</h3>
+          <div class="field">
+            <label data-i18n="config_notif_lang">Langue (Discord &amp; Apprise)</label>
+            <select id="notification_language" name="notification_language" style="width:200px">
+              <option value="fr">Français</option>
+              <option value="en">English</option>
+              <option value="de">Deutsch</option>
+            </select>
+            <small class="field-hint" data-i18n="config_notif_lang_hint">Indépendante de la langue de la WebUI</small>
+          </div>
+        </div>
+
+        <div class="config-section">
+          <h3 data-i18n="config_apprise_title">Apprise</h3>
+          <div class="toggle-row">
+            <label class="toggle-switch">
+              <input type="checkbox" id="apprise_enabled" name="apprise_enabled">
+              <span class="slider"></span>
+            </label>
+            <label for="apprise_enabled" data-i18n="config_apprise_enable">
+              Activer les notifications Apprise
+            </label>
+          </div>
+          <div class="field">
+            <label data-i18n="config_apprise_server">URL du serveur Apprise</label>
+            <input type="url" id="apprise_server_url" name="apprise_server_url"
+              placeholder="http://apprise:8000">
+            <small class="field-hint" data-i18n="config_apprise_server_hint"></small>
+          </div>
+          <div class="field">
+            <label data-i18n="config_apprise_urls">URLs de notification</label>
+            <input type="text" id="apprise_urls" name="apprise_urls"
+              placeholder="ntfy://ntfy.sh/topic,tgram://token/chatid">
+            <small class="field-hint" data-i18n="config_apprise_urls_hint"></small>
+          </div>
+          <div>
+            <button type="button" class="btn-secondary" onclick="testApprise()" data-i18n="config_apprise_test">
+              Tester Apprise
+            </button>
+            <span id="appriseTestMsg" style="margin-left:10px;font-size:.85rem"></span>
+          </div>
+        </div>
+
+        <div style="padding-top:16px;display:flex;gap:10px;align-items:center">
+          <button type="submit" class="btn-primary" data-i18n="config_save_btn">💾 Enregistrer</button>
+          <span id="configMsg" class="config-msg"></span>
+        </div>
+      </form>
+
+      <!-- Maintenance -->
+      <div class="card" style="margin-top:24px">
+        <h3 style="margin-bottom:6px" data-i18n="maintenance_title">Migration et réparation</h3>
+        <p class="text-muted" style="font-size:13px;margin-bottom:16px" data-i18n="maintenance_desc">
+          Outils avancés pour corriger les médias déjà indexés. Ils ne sont pas exécutés par cron.
+        </p>
+
+        <div class="integration-cat-hint" style="margin-bottom:16px" data-i18n="maintenance_safety">
+          L’analyse est en lecture seule. Une sauvegarde SQLite est créée automatiquement avant toute correction.
+          Les futures migrations de classement sont versionnées et exécutées une seule fois.
+        </div>
+
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <button type="button" class="btn-primary" onclick="analyzeMaintenance()" id="maintenanceAnalyzeBtn" data-i18n="maintenance_analyze">Analyser la médiathèque</button>
+          <span id="maintenanceAnalysisMeta" class="text-muted"></span>
+        </div>
+        <div id="maintenanceAnalysis" style="margin-top:16px"></div>
+
+        <div id="maintenanceApplyPanel" style="display:none;margin-top:16px">
+          <label class="catalog-source-choice" style="max-width:720px">
+            <input type="checkbox" id="maintenanceIncludeAnime">
+            <span>
+              <strong data-i18n="maintenance_anime_option">Vérifier aussi les animations avec TMDB</strong><br>
+              <small class="text-muted" data-i18n="maintenance_anime_warning">Option lente : un appel TMDB par candidat Animation afin de ne conserver que les œuvres japonaises.</small>
+            </span>
+          </label>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px">
+            <button type="button" class="btn-danger" onclick="applyMaintenance()" id="maintenanceApplyBtn" data-i18n="maintenance_apply">Sauvegarder puis appliquer les corrections</button>
+            <span id="maintenanceApplyResult" class="text-muted"></span>
+          </div>
+        </div>
+
+        <details style="margin-top:20px">
+          <summary data-i18n="maintenance_source_summary">Action après modification des règles de sources</summary>
+          <p class="text-muted" style="font-size:12px;margin:10px 0">
+            Recalcule la catégorie de toute la médiathèque selon les forces et indices d’URL actuels.
+            Cette action peut déplacer beaucoup de médias et reste volontairement manuelle.
+          </p>
+          <button type="button" class="btn-sm" onclick="reclassifyAll()" id="reclassifyAllBtn" data-i18n="maintenance_source_apply">Sauvegarder puis reclassifier par sources</button>
+          <div id="reclassifyAllResult" style="margin-top:12px;font-size:13px;display:none"></div>
+        </details>
+
+        <details style="margin-top:16px" open>
+          <summary data-i18n="maintenance_history_title">Historique des opérations</summary>
+          <div id="maintenanceHistory" style="margin-top:12px"></div>
+        </details>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ═══════════════════ DRAWER releases ═══════════════════════════ -->
+<div id="drawerBackdrop" class="drawer-backdrop" onclick="closeDrawer()"></div>
+<aside id="releasesDrawer" class="releases-drawer">
+  <div class="drawer-header">
+    <div class="drawer-media-info" id="drawerInfo"></div>
+    <button class="drawer-close" onclick="closeDrawer()">✕</button>
+  </div>
+  <div class="drawer-body" id="drawerBody">
+    <p class="text-muted" data-i18n="sync_loading">Chargement...</p>
+  </div>
+</aside>
+
+<script src="/static/i18n.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>

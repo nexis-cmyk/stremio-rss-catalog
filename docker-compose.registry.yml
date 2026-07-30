@@ -1,6 +1,6 @@
 services:
   stremio-rss-catalog:
-image: ${REGISTRY_IMAGE:-ghcr.io/nexis-cmyk/stremio-rss-catalog}:${IMAGE_TAG:-latest}
+    image: ${REGISTRY_IMAGE:-ghcr.io/nexis-cmyk/stremio-rss-catalog}:${IMAGE_TAG:-latest}
     container_name: stremio-rss-catalog
     restart: unless-stopped
     ports:
