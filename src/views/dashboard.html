@@ -904,6 +904,20 @@
             <small>Le catalogue sera l’intersection entre ce guide et les médias déjà indexés.</small>
           </div>
           <div class="field">
+            <label data-i18n="catalogs_sort">Ordre du catalogue</label>
+            <select id="catalogSortMode">
+              <option value="rss_date_desc" data-i18n="catalogs_sort_rss_desc">RSS-Datum — neu nach alt</option>
+              <option value="rss_date_asc" data-i18n="catalogs_sort_rss_asc">RSS-Datum — alt nach neu</option>
+              <option value="added_desc" data-i18n="catalogs_sort_added_desc">Addon-Aufnahme — neu nach alt</option>
+              <option value="added_asc" data-i18n="catalogs_sort_added_asc">Addon-Aufnahme — alt nach neu</option>
+              <option value="year_desc" data-i18n="catalogs_sort_year_desc">Filmjahr — neu nach alt</option>
+              <option value="year_asc" data-i18n="catalogs_sort_year_asc">Filmjahr — alt nach neu</option>
+              <option value="name_asc" data-i18n="catalogs_sort_name_asc">Titel — A–Z</option>
+              <option value="name_desc" data-i18n="catalogs_sort_name_desc">Titel — Z–A</option>
+            </select>
+            <small data-i18n="catalogs_sort_help">Bei RSS-Sortierung zählt das Veröffentlichungsdatum des neuesten passenden Releases.</small>
+          </div>
+          <div class="field">
             <label data-i18n="catalogs_year_filter">Filtre année</label>
             <select id="catalogYearMode">
               <option value="include" data-i18n="catalogs_year_include">Uniquement les années</option>
